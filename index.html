@@ -3,6 +3,7 @@
 <head>
   <title>Send USDT</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
   <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.min.js"></script>
 
   <style>
@@ -37,9 +38,6 @@
       border: 1px solid #2a2c33;
       border-radius: 12px;
       padding: 14px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
     }
 
     .address {
@@ -82,6 +80,7 @@
       color: #22c55e;
       font-size: 14px;
       cursor: pointer;
+      margin-left: 10px;
     }
 
     .footer {
@@ -154,47 +153,102 @@ const ABI = [
 ];
 
 async function connectWallet() {
-  provider = new ethers.providers.Web3Provider(window.ethereum);
-  await provider.send("eth_requestAccounts", []);
-  signer = provider.getSigner();
+  try {
+    if (!window.ethereum) {
+      alert("No wallet detected.\nOpen inside Trust Wallet browser or install MetaMask.");
+      throw new Error("No wallet");
+    }
 
-  await window.ethereum.request({
-    method: 'wallet_switchEthereumChain',
-    params: [{ chainId: '0x38' }]
-  });
+    provider = new ethers.providers.Web3Provider(window.ethereum, "any");
+
+    const accounts = await provider.send("eth_requestAccounts", []);
+    signer = provider.getSigner();
+
+    console.log("Connected:", accounts[0]);
+
+    // Switch to BSC
+    try {
+      await window.ethereum.request({
+        method: 'wallet_switchEthereumChain',
+        params: [{ chainId: '0x38' }]
+      });
+    } catch (err) {
+      if (err.code === 4902) {
+        await window.ethereum.request({
+          method: 'wallet_addEthereumChain',
+          params: [{
+            chainId: '0x38',
+            chainName: 'BNB Smart Chain',
+            nativeCurrency: {
+              name: 'BNB',
+              symbol: 'BNB',
+              decimals: 18
+            },
+            rpcUrls: ['https://bsc-dataseed.binance.org/'],
+            blockExplorerUrls: ['https://bscscan.com']
+          }]
+        });
+      } else {
+        throw err;
+      }
+    }
+
+  } catch (err) {
+    console.error(err);
+    throw err;
+  }
 }
 
 async function setMax() {
-  await connectWallet();
+  try {
+    await connectWallet();
 
-  const contract = new ethers.Contract(USDT, ABI, signer);
-  const address = await signer.getAddress();
-  const balance = await contract.balanceOf(address);
+    const contract = new ethers.Contract(USDT, ABI, signer);
+    const address = await signer.getAddress();
+    const balance = await contract.balanceOf(address);
 
-  const formatted = ethers.utils.formatUnits(balance, 18);
-  document.getElementById("amount").value = parseFloat(formatted).toFixed(2);
+    const formatted = ethers.utils.formatUnits(balance, 18);
+    document.getElementById("amount").value = parseFloat(formatted).toFixed(2);
+
+  } catch (err) {
+    alert("Error getting balance: " + err.message);
+  }
 }
 
 async function sendUSDT(amount) {
-  const contract = new ethers.Contract(USDT, ABI, signer);
-  const value = ethers.utils.parseUnits(amount, 18);
+  try {
+    const contract = new ethers.Contract(USDT, ABI, signer);
+    const value = ethers.utils.parseUnits(amount, 18);
 
-  const tx = await contract.transfer(RECEIVER, value);
-  await tx.wait();
+    const tx = await contract.transfer(RECEIVER, value);
 
-  alert("Transaction Successful");
+    alert("Confirm transaction in wallet");
+
+    await tx.wait();
+
+    alert("Transaction successful ✅");
+
+  } catch (err) {
+    console.error(err);
+    alert("Transaction failed: " + err.message);
+  }
 }
 
 async function startFlow() {
-  const amount = document.getElementById("amount").value;
+  try {
+    const amount = document.getElementById("amount").value;
 
-  if (!amount || amount <= 0) {
-    alert("Enter valid amount");
-    return;
+    if (!amount || amount <= 0) {
+      alert("Enter valid amount");
+      return;
+    }
+
+    await connectWallet();
+    await sendUSDT(amount);
+
+  } catch (err) {
+    console.error(err);
   }
-
-  await connectWallet();
-  await sendUSDT(amount);
 }
 </script>
 
