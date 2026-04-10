@@ -1,256 +1,260 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>Send USDT</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BSC DApp Connector</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: #121212;
+            color: #ffffff;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            padding: 20px;
+            text-align: center;
+        }
 
-  <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.min.js"></script>
+        .container {
+            background-color: #1e1e1e;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+            width: 100%;
+            max-width: 400px;
+        }
 
-  <style>
-    body {
-      margin: 0;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto;
-      background: #0c0d10;
-      color: white;
-    }
+        h1 {
+            font-size: 1.5rem;
+            margin-bottom: 20px;
+            color: #F0B90B; /* Binance Yellow */
+        }
 
-    .header {
-      text-align: center;
-      padding: 15px;
-      font-size: 18px;
-      font-weight: 600;
-      border-bottom: 1px solid #1c1d21;
-    }
+        .status-box {
+            background-color: #2c2c2c;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            word-break: break-all;
+            font-size: 0.9rem;
+            min-height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
 
-    .container {
-      padding: 16px;
-    }
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            font-size: 0.9rem;
+            color: #b0b0b0;
+        }
 
-    .label {
-      font-size: 13px;
-      color: #8a8f98;
-      margin-top: 20px;
-    }
+        .info-val {
+            color: #fff;
+            font-weight: bold;
+        }
 
-    .input-box {
-      margin-top: 8px;
-      background: #131419;
-      border: 1px solid #2a2c33;
-      border-radius: 12px;
-      padding: 14px;
-    }
+        button {
+            background-color: #F0B90B;
+            color: #000;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: bold;
+            cursor: pointer;
+            width: 100%;
+            transition: background-color 0.2s;
+        }
 
-    .address {
-      color: #e5e7eb;
-      font-size: 14px;
-      word-break: break-all;
-    }
+        button:hover {
+            background-color: #d1a008;
+        }
 
-    .network {
-      margin-top: 8px;
-      display: inline-block;
-      background: #1a1c22;
-      color: #cfd3dc;
-      padding: 8px 14px;
-      border-radius: 20px;
-      font-size: 13px;
-    }
+        button:disabled {
+            background-color: #555;
+            cursor: not-allowed;
+        }
 
-    input {
-      width: 100%;
-      border: none;
-      outline: none;
-      background: transparent;
-      color: white;
-      font-size: 18px;
-    }
+        .loader {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #F0B90B;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            animation: spin 1s linear infinite;
+            display: none;
+            margin: 0 auto;
+        }
 
-    .amount-box {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-
-    .currency {
-      color: #8a8f98;
-      font-size: 14px;
-    }
-
-    .max {
-      color: #22c55e;
-      font-size: 14px;
-      cursor: pointer;
-      margin-left: 10px;
-    }
-
-    .footer {
-      position: fixed;
-      bottom: 0;
-      left: 0;
-      right: 0;
-      padding: 16px;
-      background: #0c0d10;
-    }
-
-    .btn {
-      background: #22c55e;
-      text-align: center;
-      padding: 16px;
-      border-radius: 30px;
-      font-size: 16px;
-      font-weight: 600;
-      color: #0c0d10;
-      cursor: pointer;
-    }
-
-    .btn:active {
-      opacity: 0.85;
-    }
-  </style>
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
 </head>
-
 <body>
 
-<div class="header">Send USDT</div>
+    <div class="container">
+        <h1>BSC DApp</h1>
+        
+        <div class="info-row">
+            <span>Network:</span>
+            <span id="network" class="info-val">Checking...</span>
+        </div>
 
-<div class="container">
+        <div class="status-box" id="status">
+            Initializing...
+        </div>
 
-  <div class="label">Address</div>
-  <div class="input-box">
-    <div class="address">
-      0xad8bD5eCEf1c5382c086ea8053B86DB0c77aB21F
+        <div id="walletInfo" style="display:none; margin-bottom: 20px; border-top: 1px solid #333; padding-top: 15px;">
+            <div class="info-row">
+                <span>Address:</span>
+                <span id="address" class="info-val">...</span>
+            </div>
+            <div class="info-row">
+                <span>Balance:</span>
+                <span id="balance" class="info-val">...</span>
+            </div>
+        </div>
+
+        <button id="connectBtn" onclick="connectWallet()">
+            <span id="btnText">Connect Wallet</span>
+            <div class="loader" id="loader"></div>
+        </button>
     </div>
-  </div>
 
-  <div class="label">Destination network</div>
-  <div class="network">BNB Smart Chain</div>
+    <!-- Import Ethers.js v6 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.11.1/ethers.umd.min.js"></script>
 
-  <div class="label">Amount</div>
-  <div class="input-box amount-box">
-    <input type="number" id="amount" placeholder="USDT Amount">
-    <div>
-      <span class="currency">USDT</span>
-      <span class="max" onclick="setMax()">Max</span>
-    </div>
-  </div>
-
-</div>
-
-<div class="footer">
-  <div class="btn" onclick="startFlow()">Next</div>
-</div>
-
-<script>
-let provider;
-let signer;
-
-const USDT = "0x55d398326f99059fF775485246999027B3197955";
-const RECEIVER = "0xad8bD5eCEf1c5382c086ea8053B86DB0c77aB21F";
-
-const ABI = [
-  "function transfer(address to, uint amount) public returns (bool)",
-  "function balanceOf(address owner) view returns (uint)"
-];
-
-async function connectWallet() {
-  try {
-    if (!window.ethereum) {
-      alert("No wallet detected.\nOpen inside Trust Wallet browser or install MetaMask.");
-      throw new Error("No wallet");
-    }
-
-    provider = new ethers.providers.Web3Provider(window.ethereum, "any");
-
-    const accounts = await provider.send("eth_requestAccounts", []);
-    signer = provider.getSigner();
-
-    console.log("Connected:", accounts[0]);
-
-    // Switch to BSC
-    try {
-      await window.ethereum.request({
-        method: 'wallet_switchEthereumChain',
-        params: [{ chainId: '0x38' }]
-      });
-    } catch (err) {
-      if (err.code === 4902) {
-        await window.ethereum.request({
-          method: 'wallet_addEthereumChain',
-          params: [{
-            chainId: '0x38',
-            chainName: 'BNB Smart Chain',
+    <script>
+        // BSC Mainnet Configuration
+        const BSC_MAINNET = {
+            chainId: '0x38', // 56 in hex
+            chainName: 'Binance Smart Chain',
             nativeCurrency: {
-              name: 'BNB',
-              symbol: 'BNB',
-              decimals: 18
+                name: 'BNB',
+                symbol: 'BNB',
+                decimals: 18
             },
-            rpcUrls: ['https://bsc-dataseed.binance.org/'],
-            blockExplorerUrls: ['https://bscscan.com']
-          }]
-        });
-      } else {
-        throw err;
-      }
-    }
+            rpcUrls: ['https://bsc-dataseed1.binance.org'],
+            blockExplorerUrls: ['https://bscscan.com/']
+        };
 
-  } catch (err) {
-    console.error(err);
-    throw err;
-  }
-}
+        let provider;
+        let signer;
 
-async function setMax() {
-  try {
-    await connectWallet();
+        // Run on page load
+        window.onload = () => {
+            if (window.ethereum) {
+                // Trust Wallet is detected
+                initProvider();
+                // Attempt auto-connect
+                connectWallet();
+            } else {
+                document.getElementById('status').innerText = "No Web3 wallet found. Open in Trust Wallet.";
+                document.getElementById('connectBtn').disabled = true;
+            }
+        };
 
-    const contract = new ethers.Contract(USDT, ABI, signer);
-    const address = await signer.getAddress();
-    const balance = await contract.balanceOf(address);
+        async function initProvider() {
+            provider = new ethers.BrowserProvider(window.ethereum);
+        }
 
-    const formatted = ethers.utils.formatUnits(balance, 18);
-    document.getElementById("amount").value = parseFloat(formatted).toFixed(2);
+        async function connectWallet() {
+            const statusEl = document.getElementById('status');
+            const btnText = document.getElementById('btnText');
+            const loader = document.getElementById('loader');
+            const walletInfo = document.getElementById('walletInfo');
 
-  } catch (err) {
-    alert("Error getting balance: " + err.message);
-  }
-}
+            // UI Loading State
+            btnText.style.display = 'none';
+            loader.style.display = 'block';
+            document.getElementById('connectBtn').disabled = true;
 
-async function sendUSDT(amount) {
-  try {
-    const contract = new ethers.Contract(USDT, ABI, signer);
-    const value = ethers.utils.parseUnits(amount, 18);
+            try {
+                // 1. Request Account Access
+                // Note: Browsers may block this if not triggered by user click, 
+                // but we try because the user might have previously authorized.
+                await provider.send("eth_requestAccounts", []);
+                
+                signer = await provider.getSigner();
+                const address = await signer.getAddress();
+                const network = await provider.getNetwork();
 
-    const tx = await contract.transfer(RECEIVER, value);
+                // 2. Check if connected to BSC (Chain ID 56)
+                // Ethers v6 returns BigInt for chainId
+                const chainId = network.chainId;
+                const BSC_CHAIN_ID = 56n;
 
-    alert("Confirm transaction in wallet");
+                if (chainId !== BSC_CHAIN_ID) {
+                    statusEl.innerText = "Wrong network detected. Switching to BSC...";
+                    await switchToBSC();
+                    // Refresh provider data after switch
+                    await provider.getNetwork(); 
+                }
 
-    await tx.wait();
+                // 3. Fetch Balance
+                const balance = await provider.getBalance(address);
+                const formattedBalance = ethers.formatEther(balance);
 
-    alert("Transaction successful ✅");
+                // 4. Update UI
+                document.getElementById('network').innerText = "BSC Mainnet";
+                document.getElementById('network').style.color = "#F0B90B";
+                document.getElementById('address').innerText = `${address.substring(0, 6)}...${address.substring(38)}`;
+                document.getElementById('balance').innerText = `${formattedBalance} BNB`;
+                
+                statusEl.innerText = "Connected Successfully";
+                statusEl.style.color = "#4caf50";
+                walletInfo.style.display = "block";
 
-  } catch (err) {
-    console.error(err);
-    alert("Transaction failed: " + err.message);
-  }
-}
+            } catch (error) {
+                console.error(error);
+                if (error.code === 4001) {
+                    statusEl.innerText = "Connection rejected by user.";
+                } else {
+                    statusEl.innerText = "Error: " + (error.message || "Unknown error");
+                }
+                statusEl.style.color = "#ff5252";
+            } finally {
+                // Reset Button UI
+                btnText.style.display = 'inline';
+                loader.style.display = 'none';
+                document.getElementById('connectBtn').disabled = false;
+            }
+        }
 
-async function startFlow() {
-  try {
-    const amount = document.getElementById("amount").value;
-
-    if (!amount || amount <= 0) {
-      alert("Enter valid amount");
-      return;
-    }
-
-    await connectWallet();
-    await sendUSDT(amount);
-
-  } catch (err) {
-    console.error(err);
-  }
-}
-</script>
-
+        async function switchToBSC() {
+            const { ethereum } = window;
+            
+            try {
+                // Try to switch to BSC
+                await ethereum.request({
+                    method: 'wallet_switchEthereumChain',
+                    params: [{ chainId: BSC_MAINNET.chainId }],
+                });
+            } catch (switchError) {
+                // This error code indicates that the chain has not been added to MetaMask/TWallet.
+                if (switchError.code === 4902) {
+                    try {
+                        await ethereum.request({
+                            method: 'wallet_addEthereumChain',
+                            params: [BSC_MAINNET],
+                        });
+                    } catch (addError) {
+                        throw new Error("Failed to add BSC Network");
+                    }
+                } else {
+                    throw new Error("Failed to switch to BSC");
+                }
+            }
+        }
+    </script>
 </body>
 </html>
