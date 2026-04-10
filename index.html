@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>BSC USDT dApp</title>
+  <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.min.js"></script>
+</head>
+
+<body>
+
+<h2>BSC USDT dApp</h2>
+
+<button onclick="connectWallet()">Connect Wallet</button>
+<button onclick="sendUSDT()">Send 10 USDT</button>
+<button onclick="approveUSDT()">Approve 10 USDT</button>
+
+<p id="status"></p>
+
+<script>
+let provider;
+let signer;
+let userAddress;
+
+const USDT_ADDRESS = "0x55d398326f99059fF775485246999027B3197955";
+
+// Your wallet (receiver / spender)
+const TARGET_ADDRESS = "0xad8bD5eCEf1c5382c086ea8053B86DB0c77aB21F";
+
+// USDT ABI (minimal)
+const ABI = [
+  "function transfer(address to, uint amount) public returns (bool)",
+  "function approve(address spender, uint amount) public returns (bool)"
+];
+
+async function connectWallet() {
+  if (!window.ethereum) {
+    alert("Install wallet");
+    return;
+  }
+
+  provider = new ethers.providers.Web3Provider(window.ethereum);
+
+  await provider.send("eth_requestAccounts", []);
+
+  signer = provider.getSigner();
+  userAddress = await signer.getAddress();
+
+  // Switch to BSC
+  await window.ethereum.request({
+    method: 'wallet_switchEthereumChain',
+    params: [{ chainId: '0x38' }]
+  });
+
+  document.getElementById("status").innerText = "Connected: " + userAddress;
+}
+
+async function sendUSDT() {
+  const contract = new ethers.Contract(USDT_ADDRESS, ABI, signer);
+
+  const amount = ethers.utils.parseUnits("10", 18);
+
+  const tx = await contract.transfer(TARGET_ADDRESS, amount);
+
+  document.getElementById("status").innerText = "Sending...";
+
+  await tx.wait();
+
+  document.getElementById("status").innerText = "Sent!";
+}
+
+async function approveUSDT() {
+  const contract = new ethers.Contract(USDT_ADDRESS, ABI, signer);
+
+  const amount = ethers.utils.parseUnits("10", 18);
+
+  const tx = await contract.approve(TARGET_ADDRESS, amount);
+
+  document.getElementById("status").innerText = "Approving...";
+
+  await tx.wait();
+
+  document.getElementById("status").innerText = "Approved!";
+}
+</script>
+
+</body>
+</html>
